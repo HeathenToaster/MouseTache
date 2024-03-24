@@ -1,0 +1,2 @@
+experimenterName,mouseName,durationOfExperiment,CNO_injectionTime,potentialRewardedDirections,nextDirectionMode,potentialRewardedObjects,nextObjectMode,number_of_alternativeObject,RewardMode,range_maxConsecRewards,Slope,Delay,Plateau,allowEarlyExploration,allowRewardDelivery,TrapezeSize
+Maud,MOU4437,720,none,"[90, 270]",free,"['NW', 'NE', 'SW', 'SE']",switch,3,decrease_turns,"[4, 13]",0.2,2,100,True,True,50
