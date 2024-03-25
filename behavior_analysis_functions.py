@@ -536,7 +536,7 @@ def process_session(mouseFolder_Path, session, process=False):
 
         ######################################################
         # Figure creation  ~10sec
-        summary_fig = plt.figure(figsize=(14, 12), constrained_layout=True, facecolor='w', dpi=100)
+        summary_fig = plt.figure(figsize=(14, 12), constrained_layout=True, facecolor='w', dpi=180)
         gs = summary_fig.add_gridspec(6, 8, height_ratios=[1, 1, 1, 1, 1, 1], #hspace=0.5,
                                     width_ratios=[1, 1, 1, 1, 1, .1, 1, 1],# wspace=0.5
                                     )  # 6 rows, 8 columns
@@ -628,7 +628,7 @@ def process_session(mouseFolder_Path, session, process=False):
         # summary_fig.savefig(figpath+'.pdf', facecolor='w',
         #             edgecolor='none', bbox_inches='tight', format="pdf", dpi=100)
         summary_fig.savefig(figpath+'.png', facecolor='w',
-                    edgecolor='none', bbox_inches='tight', format="png", dpi=100)
+                    edgecolor='none', bbox_inches='tight', format="png", dpi=180)
 
         plt.close('all')
 
