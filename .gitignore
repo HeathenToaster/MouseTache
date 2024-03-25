@@ -1,0 +1,4 @@
+# Ignore these files when importing on github
+*.png
+*.html
+*.pyc
