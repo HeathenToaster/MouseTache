@@ -154,10 +154,10 @@ def whichPatch(number):
         raise ValueError("The number must be between 0 and 3")
 
 ################################
-def search_right_turn(time_start, time_end, dinfo):
-    for i in range(len(dinfo)):
-        if dinfo.iat[i, 0] > time_start and dinfo.iat[i, 0] < time_end:#if the time of the turn is comprised between the beginning and the end of the epoch
-            return dinfo.iat[i, 12] #return the max number of rewards of the serie
+def search_right_turn(time_start, time_end, turns_df):
+    for i in range(len(turns_df)):
+        if turns_df.iat[i, 0] > time_start and turns_df.iat[i, 0] < time_end:#if the time of the turn is comprised between the beginning and the end of the epoch
+            return turns_df.iat[i, 12] #return the max number of rewards of the serie
     return -1
 
 ################################
@@ -289,12 +289,12 @@ def calcul_angle(ycoordinate, ecart, xcoordinate):
 
 ##############################
 def analysis_trajectory(time, xgauss, ygauss,
-                        collection_trapeze, dinfo,
+                        collection_trapeze, turns_df,
                         cut_speed, ecart_angle, RESOLUTION, MIN_DURATION_STOP, MIN_DURATION_EPOCH):
     """ Arguments =
     time, xgauss, ygauss:the time of each frame in the TXY csv file and the smoothen positions;
     collection_trapeze:dictionnary with an entry for each patch containing each a dictionnary on their side containing the angles coordinate of the detection trapeze;
-    dinfo the dataframe containing the informations of the turnsinfo csv corresponding to the sequence;
+    turns_df the dataframe containing the informations of the turnsinfo csv corresponding to the sequence;
     cut_speed: speed under which the mouse is considerd to not be moving;
     ecart_angle: ecart between two frame used to calculate the angle, speed and acceleration;
     RESOLUTION: RESOLUTION of the setup in pixels (the size in m is 0.84. if this change, the code must be updqted manualy);
@@ -346,11 +346,11 @@ def analysis_trajectory(time, xgauss, ygauss,
     # [5] = 'n'/'r' for non-rewarded/ rewarded (if multiple turns are done in the movement, only the last one is considered)
     in_an_epoch_but_no_quarter = [] #will contain a list under the form [time, corresponding epoch, bool rewarded]
 
-    for a in range(dinfo.index[0], dinfo.index[-1]):#the epochs are written as "not a quarter" by default. We just need to change it for those which are
-        aprime = a - dinfo.index[0]
+    for a in range(turns_df.index[0], turns_df.index[-1]):#the epochs are written as "not a quarter" by default. We just need to change it for those which are
+        aprime = a - turns_df.index[0]
         not_past_nor_found = True
         i = 0
-        turn_time = dinfo.loc[dinfo.index[aprime], "time"]    #dinfo.iat[aprime , 0]
+        turn_time = turns_df.loc[turns_df.index[aprime], "time"]    #turns_df.iat[aprime , 0]
         if time[list_epochs[-1][1]] < turn_time: #if the last epoch end before the recorded turn, discard the turn
             not_past_nor_found = False
 
@@ -363,43 +363,43 @@ def analysis_trajectory(time, xgauss, ygauss,
                     #check if the beginning of the epoch (movement) is in the polygon it's supposed to                                                                             #check if the beginning of the epoch (movement) is in the polygon it's supposed to
 
                 #set the value of  epoch[3] for this epoch to the number of reward the aniimal had at the beginning off the movement
-                list_epochs[i][3] = dinfo.loc[dinfo.index[aprime - 1], "totalnberOfRewards"] #dinfo.iat[aprime -1, 14]
+                list_epochs[i][3] = turns_df.loc[turns_df.index[aprime - 1], "totalnberOfRewards"] #turns_df.iat[aprime -1, 14]
 
-                if points_in_polygon(polygon = collection_trapeze[dinfo.loc[dinfo.index[aprime], "currentPatch"]][dinfo.loc[dinfo.index[aprime], "previousTrapeze"]], pts = [[xgauss[list_epochs[i][0]], ygauss[list_epochs[i][0]]]]) and points_in_polygon(polygon = collection_trapeze[dinfo.loc[dinfo.index[aprime], "currentPatch"]][dinfo.loc[dinfo.index[aprime], "currentTrapeze"]], pts= [[xgauss[list_epochs[i][1]], ygauss[list_epochs[i][1]]]]):
+                if points_in_polygon(polygon = collection_trapeze[turns_df.loc[turns_df.index[aprime], "currentPatch"]][turns_df.loc[turns_df.index[aprime], "previousTrapeze"]], pts = [[xgauss[list_epochs[i][0]], ygauss[list_epochs[i][0]]]]) and points_in_polygon(polygon = collection_trapeze[turns_df.loc[turns_df.index[aprime], "currentPatch"]][turns_df.loc[turns_df.index[aprime], "currentTrapeze"]], pts= [[xgauss[list_epochs[i][1]], ygauss[list_epochs[i][1]]]]):
                     #current patch is obtained from a number between 0 and 3 indicating in which patch it is (True = 1, False = 0)
                     current_patch = whichPatch((xgauss[list_epochs[i][0]] < RESOLUTION[0] / 2) * 1 + (ygauss[list_epochs[i][0]] < RESOLUTION[1] / 2) * 2)
 
                     #check if the mouse does not go to another patch. If it does, it is not a quarter turn
                     if stay_in_patch(current_patch, xgauss[list_epochs[i][0]:list_epochs[i][1] + 1], ygauss[list_epochs[i][0]: list_epochs[i][1] + 1], RESOLUTION):
-                        if int(dinfo.iat[aprime, 7]) == 90:
+                        if int(turns_df.iat[aprime, 7]) == 90:
                             w_turn = "k"  #add a marker depending of the type of turn
                         else: w_turn = "w"
 
                         #select the type of turn
-                        if len(dinfo.loc[dinfo.index[aprime], "typeOfTurn"]) == 6:
+                        if len(turns_df.loc[turns_df.index[aprime], "typeOfTurn"]) == 6:
                             t_turn = 'E' #E stand for Extra turn
-                        elif dinfo.loc[dinfo.index[aprime], "typeOfTurn"][0] == 'b':
-                            if dinfo.loc[dinfo.index[aprime], "typeOfTurn"][2] == 'b':
+                        elif turns_df.loc[turns_df.index[aprime], "typeOfTurn"][0] == 'b':
+                            if turns_df.loc[turns_df.index[aprime], "typeOfTurn"][2] == 'b':
                                 t_turn = 'H' #H for horrible (neither good direction nor good good object)
                             else:
                                 t_turn = 'O' # O stand for wrong Object
-                        elif dinfo.loc[dinfo.index[aprime], "typeOfTurn"][2] == 'b':
+                        elif turns_df.loc[turns_df.index[aprime], "typeOfTurn"][2] == 'b':
                             t_turn = 'B'# B stand for Bad turn
-                        elif dinfo.loc[dinfo.index[aprime], "typeOfTurn"][0] == 'e':
+                        elif turns_df.loc[turns_df.index[aprime], "typeOfTurn"][0] == 'e':
                             t_turn = 'X' # X for exploration
                         else:
                             t_turn = 'G' # G stands for Good turn
 
-                        if dinfo.loc[dinfo.index[aprime], "Rewarded"]:
+                        if turns_df.loc[turns_df.index[aprime], "Rewarded"]:
                             reward = "R"
                         else:
                             reward = "N"
 
                         list_epochs[i][2] = "Q" + w_turn + t_turn + current_patch + reward# Q for quarter turn.
                     else:
-                        in_an_epoch_but_no_quarter += [(turn_time, i, dinfo.loc[dinfo.index[aprime], "Rewarded"])]
+                        in_an_epoch_but_no_quarter += [(turn_time, i, turns_df.loc[turns_df.index[aprime], "Rewarded"])]
                 else:
-                    in_an_epoch_but_no_quarter += [(turn_time, i, dinfo.loc[dinfo.index[aprime], "Rewarded"])]
+                    in_an_epoch_but_no_quarter += [(turn_time, i, turns_df.loc[turns_df.index[aprime], "Rewarded"])]
 
                 not_past_nor_found = False # the correct epoch was found, no need to continue
 
@@ -477,7 +477,7 @@ def process_session(mouseFolder_Path, session, process=False):
     """
     if process:
         # Load the data
-        df, dinfo, session_params = load_data(mouseFolder_Path, session)
+        df, turns_df, session_params = load_data(mouseFolder_Path, session)
         phase, direction, cno = get_phase_direction_cno(session_params)
 
         ###############################################################################
@@ -493,7 +493,7 @@ def process_session(mouseFolder_Path, session, process=False):
 
         #Does the actual analysis. The remaining part consists in accessing the pertinent informations and plotting them
         distance, speed, time_average, acceleration, angles, angular_speed, list_epochs = analysis_trajectory(
-            time, xgauss, ygauss, collection_trapeze, dinfo, TRUE_CUT_SPEED, TRUE_ECART_ANGLE, RESOLUTION,
+            time, xgauss, ygauss, collection_trapeze, turns_df, TRUE_CUT_SPEED, TRUE_ECART_ANGLE, RESOLUTION,
             MIN_DURATION_EPOCH=MINIMAL_DURATION_EPOCH, MIN_DURATION_STOP=MINIMAL_DURATION_STOP)
 
         #prepare lists of epochs corresponding to diffrent type of behavior
@@ -531,8 +531,8 @@ def process_session(mouseFolder_Path, session, process=False):
         clock_turn = [epoch for epoch in list_quarter_turn if epoch[2][1] == "w"]
         exploring = [epoch for epoch in list_quarter_turn if epoch[2][2] == 'X']
 
-        when_reward = [[dinfo.loc[a, "time"], dinfo.loc[a, "currentPatch"]] for a in dinfo.index if dinfo.loc[a, "Rewarded"]]
-        when_no_reward = [[dinfo.loc[a, "time"], dinfo.loc[a, "currentPatch"]] for a in dinfo.index if not dinfo.loc[a, "Rewarded"]]
+        when_reward = [[turns_df.loc[a, "time"], turns_df.loc[a, "currentPatch"]] for a in turns_df.index if turns_df.loc[a, "Rewarded"]]
+        when_no_reward = [[turns_df.loc[a, "time"], turns_df.loc[a, "currentPatch"]] for a in turns_df.index if not turns_df.loc[a, "Rewarded"]]
 
         ######################################################
         # Figure creation  ~10sec
@@ -595,7 +595,7 @@ def process_session(mouseFolder_Path, session, process=False):
         plot_session_trajectory(xposition, yposition, ax=ax_traj)
         plot_session_speed(xposition, yposition, time, ax=ax_speed)
         plot_angular_speed(angular_speed, list_epochs, ax=ax_angular_speed)
-        figure_qt_number(dinfo, ax=ax_qt_number)
+        figure_qt_number(turns_df, ax=ax_qt_number)
 
         # row 2:5, cols 0:4  ~5sec
         movement_types = [list_quarter_turn, list_between_objects, list_toward_object, list_movement_not_quarter]
@@ -621,7 +621,7 @@ def process_session(mouseFolder_Path, session, process=False):
         figure_cumul_qturns(list_quarter_turn, rewarded, unrewarded, time_average, axs=[ax_cumu_qt, ax_rewarded_qt])
 
         # row 6  ~1sec
-        figure_coloreddot(dinfo, time, list_epochs, list_quarter_turn, time_average, list_between_objects, ax=ax_colored_dot)
+        figure_coloreddot(turns_df, time, list_epochs, list_quarter_turn, time_average, list_between_objects, ax=ax_colored_dot)
 
         # Save the figure
         figpath = mouseFolder_Path+os.sep+session+os.sep+'Figure'
@@ -650,18 +650,18 @@ def load_data(mouseFolder_Path, session):
         print("File centroidTXY not found")
 
     try:
-        csvTurnsinfo_fullpath = mouseFolder_Path + os.sep + session + os.sep + session + '_turnsinfo.csv'  # get the information on the turns in the dataframe dinfo
-        dinfo = pd.read_csv(csvTurnsinfo_fullpath)  # Transforms CSV file into panda dataframe
-        for i in range(dinfo.index.values[-1]):  # if there is a missing value for ongoingRewardedObject, replace it with either SW or SE, as long as it's not the one where the mouse is
-            if type(dinfo['ongoingRewardedObject'][i]) == float:
-                dinfo.iat[i, 8] = str([dinfo.iat[i, 4]])
-        dinfo = dinfo.loc[dinfo['time'] > 15]  # FIXME: il y a des artefacts sur les premieres secondes de videos, donc il faut les supprimer
+        csvTurnsinfo_fullpath = mouseFolder_Path + os.sep + session + os.sep + session + '_turnsinfo.csv'  # get the information on the turns in the dataframe turns_df
+        turns_df = pd.read_csv(csvTurnsinfo_fullpath)  # Transforms CSV file into panda dataframe
+        for i in range(turns_df.index.values[-1]):  # if there is a missing value for ongoingRewardedObject, replace it with either SW or SE, as long as it's not the one where the mouse is
+            if type(turns_df['ongoingRewardedObject'][i]) == float:
+                turns_df.iat[i, 8] = str([turns_df.iat[i, 4]])
+        turns_df = turns_df.loc[turns_df['time'] > 15]  # FIXME: il y a des artefacts sur les premieres secondes de videos, donc il faut les supprimer
     except FileNotFoundError:
         print("File turnsinfo not found")
 
-    return df, dinfo, session_param
+    return df, turns_df, session_param
 
-def figure_coloreddot(dinfo, time, list_epochs, list_quarter_turn, time_average, list_between_objects, ax=None):
+def figure_coloreddot(turns_df, time, list_epochs, list_quarter_turn, time_average, list_between_objects, ax=None):
     if ax is None:
         _, ax = plt.subplots(figsize=(60, 5))
 
@@ -669,8 +669,8 @@ def figure_coloreddot(dinfo, time, list_epochs, list_quarter_turn, time_average,
     serie = 0 #Will indicate if we are in a serie
     current_quarter_turn = -1
 
-    when_reward = [[dinfo.loc[a, "time"], dinfo.loc[a, "currentPatch"]] for a in dinfo.index if dinfo.loc[a, "Rewarded"]]
-    when_no_reward = [[dinfo.loc[a, "time"], dinfo.loc[a, "currentPatch"]] for a in dinfo.index if not dinfo.loc[a, "Rewarded"]]
+    when_reward = [[turns_df.loc[a, "time"], turns_df.loc[a, "currentPatch"]] for a in turns_df.index if turns_df.loc[a, "Rewarded"]]
+    when_no_reward = [[turns_df.loc[a, "time"], turns_df.loc[a, "currentPatch"]] for a in turns_df.index if not turns_df.loc[a, "Rewarded"]]
 
     #Creates a list for each type of quarter turn
     rewarded = [epoch for epoch in list_quarter_turn if epoch[2][2] == 'G']
@@ -688,14 +688,14 @@ def figure_coloreddot(dinfo, time, list_epochs, list_quarter_turn, time_average,
             current_quarter_turn += 1#add the number of the current quarter turn after so it still indicate the last one of the serie when added
             if epoch[2][2] == 'G': #if there is a good quarter turn, enter or continu a serie
                 if serie == 0: #add the signal at the beginning of the serie
-                    list_number_reward.append([current_quarter_turn, search_right_turn(time_start= time[list_quarter_turn[current_quarter_turn][0]], time_end= time[list_quarter_turn[current_quarter_turn][1]], dinfo = dinfo)])
+                    list_number_reward.append([current_quarter_turn, search_right_turn(time_start= time[list_quarter_turn[current_quarter_turn][0]], time_end= time[list_quarter_turn[current_quarter_turn][1]], turns_df = turns_df)])
                     serie = 1
                 #serie = 1
             elif serie == 1: #if the epoch is not a rewarded quarter turn
-                #list_number_reward.append([current_quarter_turn - 1, search_right_turn(time_start= time[list_quarter_turn[current_quarter_turn][0]], time_end= time[list_quarter_turn[current_quarter_turn][1]], dinfo = dinfo)])
+                #list_number_reward.append([current_quarter_turn - 1, search_right_turn(time_start= time[list_quarter_turn[current_quarter_turn][0]], time_end= time[list_quarter_turn[current_quarter_turn][1]], turns_df = turns_df)])
                 serie = 0
         elif serie == 1: #if the epoch is not a rewarded quarter turn
-            #list_number_reward.append([current_quarter_turn, search_right_turn(time_start= time[list_quarter_turn[current_quarter_turn][0]], time_end= time[list_quarter_turn[current_quarter_turn][1]], dinfo = dinfo)])
+            #list_number_reward.append([current_quarter_turn, search_right_turn(time_start= time[list_quarter_turn[current_quarter_turn][0]], time_end= time[list_quarter_turn[current_quarter_turn][1]], turns_df = turns_df)])
             serie = 0
 
     ax.plot([time_average[i[0]] if i[2][0] == "Q"  else time_average[i[1]] for i in list_epochs if i[2][0] == "Q" or i[2][0] == "B"],
