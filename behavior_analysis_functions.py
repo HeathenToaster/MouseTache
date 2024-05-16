@@ -477,16 +477,16 @@ def process_session(mouseFolder_Path, session, process=False):
     """
     if process:
         # Load the data
-        df, turns_df, session_params = load_data(mouseFolder_Path, session)
-        phase, direction, cno = get_phase_direction_cno(session_params)
+        traj_df, turns_df, param_df = load_data(mouseFolder_Path, session)
+        phase, direction, cno = get_phase_direction_cno(param_df)
 
         ###############################################################################
         ###############################################################################
         # unpack the data
-        size_of_df = len(df) #Gets some informations in a more convenient form
-        time = df['time'].to_numpy()
-        xposition = df['xposition'].to_numpy()
-        yposition = df['yposition'].to_numpy()
+        size_of_traj_df = len(traj_df) #Gets some informations in a more convenient form
+        time = traj_df['time'].to_numpy()
+        xposition = traj_df['xposition'].to_numpy()
+        yposition = traj_df['yposition'].to_numpy()
         yposition = RESOLUTION[1] - yposition #yposition is inverted, puts it back in the right way
         xgauss = smooth(xposition, TRUE_SIGMA)
         ygauss = smooth(yposition, TRUE_SIGMA) #Smoothes the positions with true sigma
@@ -606,11 +606,11 @@ def process_session(mouseFolder_Path, session, process=False):
                 [ax_other, ax_speed_other, ax_angular_speed_other, ax_acceleration_other]]
 
         for movement_type, title, _axs in zip(movement_types, titles, _axs):
-            figure_trajectories(df, movement_type, xgauss, ygauss, speed, angular_speed, acceleration, title, axs=_axs)
+            figure_trajectories(traj_df, movement_type, xgauss, ygauss, speed, angular_speed, acceleration, title, axs=_axs)
 
         # row 0:5, col 5  ~2sec
         __axs = [ax_stops, ax_stop_duration_r, ax_stop_duration_ur, ax_stop_duration]
-        figure_stops(df, list_of_stops, xgauss, ygauss, time_average, stops_type, axs=__axs)
+        figure_stops(traj_df, list_of_stops, xgauss, ygauss, time_average, stops_type, axs=__axs)
 
         # row 2:5, cols 6:7  ~4sec
         ___axs = [ax_speed_cw, ax_speed_ccw, ax_angular_speed_cw, ax_angular_speed_ccw,
@@ -635,17 +635,17 @@ def process_session(mouseFolder_Path, session, process=False):
 def load_data(mouseFolder_Path, session):
     try:
         # Gets the parameters of the session
-        session_param = pd.read_csv(mouseFolder_Path + os.sep + session + os.sep + session + "_sessionparam.csv")
+        param_df = pd.read_csv(mouseFolder_Path + os.sep + session + os.sep + session + "_sessionparam.csv")
     except FileNotFoundError:
         print("File sessionparam not found")
 
     try:
         #Gets the positional informations and filter the dataframe to keep only the relevant informations
         csvCentroid_fullpath = mouseFolder_Path + os.sep + session + os.sep + session + '_centroidTXY.csv'
-        df = pd.read_csv(csvCentroid_fullpath) #Transforms CSV file into panda dataframe
-        df = df.dropna() #Deletes lines with one or more NA
-        df = df.loc[df['time'] > 15] #First seconds of the video contained artefacts so we need to delete them
-        df = df[df['xposition'].between(1, 500) & df['yposition'].between(1, 500)] #The values between 15 and 500 are kept (le tableau est cree plus grand que necessaire)
+        traj_df = pd.read_csv(csvCentroid_fullpath) #Transforms CSV file into panda dataframe
+        traj_df = traj_df.dropna() #Deletes lines with one or more NA
+        traj_df = traj_df.loc[traj_df['time'] > 15] #First seconds of the video contained artefacts so we need to delete them
+        traj_df = traj_df[traj_df['xposition'].between(1, 500) & traj_df['yposition'].between(1, 500)] #The values between 15 and 500 are kept (le tableau est cree plus grand que necessaire)
     except FileNotFoundError:
         print("File centroidTXY not found")
 
@@ -659,7 +659,7 @@ def load_data(mouseFolder_Path, session):
     except FileNotFoundError:
         print("File turnsinfo not found")
 
-    return df, turns_df, session_param
+    return traj_df, turns_df, param_df
 
 def figure_coloreddot(turns_df, time, list_epochs, list_quarter_turn, time_average, list_between_objects, ax=None):
     if ax is None:
@@ -739,7 +739,7 @@ def figure_coloreddot(turns_df, time, list_epochs, list_quarter_turn, time_avera
     ax.set_xlim(0, 900)
     ax.legend(loc='best')
 
-def figure_trajectories(df, current_movement, xgauss, ygauss, speed, angular_speed, acceleration, title='', axs=None):
+def figure_trajectories(traj_df, current_movement, xgauss, ygauss, speed, angular_speed, acceleration, title='', axs=None):
     if axs is None:
         _, (ax1, ax2, ax3, ax4) = plt.subplots(4, 1, figsize=(5, 15))
     else:
@@ -765,7 +765,7 @@ def figure_trajectories(df, current_movement, xgauss, ygauss, speed, angular_spe
     else:
         pass
 
-    timeSpentIn = round(sum([df.loc[df.index[epoch[1]], 'time'] - df.loc[df.index[epoch[0]], 'time'] for epoch in current_movement]), 2)
+    timeSpentIn = round(sum([traj_df.loc[traj_df.index[epoch[1]], 'time'] - traj_df.loc[traj_df.index[epoch[0]], 'time'] for epoch in current_movement]), 2)
 
     #Sets the parameters of the graph
     ax1.set_ylim(0, 500)
@@ -815,7 +815,7 @@ def figure_trajectories(df, current_movement, xgauss, ygauss, speed, angular_spe
     ax4.set_xlabel('Acceleration (cm.s-2)')
     ax4.set_ylim(0, 0.16)
 
-def figure_stops(df, current_movement, xgauss, ygauss, time_average, stops_type, axs=None):
+def figure_stops(traj_df, current_movement, xgauss, ygauss, time_average, stops_type, axs=None):
     if axs is None:
         _, (ax1, ax2, ax3, ax4) = plt.subplots(4, 1, figsize=(5, 15))
     else:
@@ -841,7 +841,7 @@ def figure_stops(df, current_movement, xgauss, ygauss, time_average, stops_type,
     else:
         pass
 
-    timeSpentIn = round(sum([df.loc[df.index[epoch[1]], 'time'] - df.loc[df.index[epoch[0]], 'time'] for epoch in current_movement]), 2)
+    timeSpentIn = round(sum([traj_df.loc[traj_df.index[epoch[1]], 'time'] - traj_df.loc[traj_df.index[epoch[0]], 'time'] for epoch in current_movement]), 2)
 
     #Sets the parameters of the graph
     ax1.set_ylim(0, 500)
@@ -1042,22 +1042,22 @@ def plot_session_speed(xpositions, ypositions, time, ax=None):
     ax.set_ylabel('Proba of event')
     ax.set_ylim([0, 0.1])
 
-def figure_qt_number(df, ax=None):
+def figure_qt_number(traj_df, ax=None):
     if ax is None:
         _, ax = plt.subplots(figsize=(5, 5))
 
-    lasturn_time = df['time'].iloc[-1]
+    lasturn_time = traj_df['time'].iloc[-1]
     binsize = 10
     bins=np.arange(0, lasturn_time + binsize, binsize)
 
-    allturns_time=df['time'].to_numpy()
+    allturns_time=traj_df['time'].to_numpy()
     n, bins, patches = ax.hist(allturns_time, bins, density=False,
                                histtype='step', cumulative=True, label='trapeze changes',
                                color=turnPalette['all turns'])
     #ax.plot(bins[:-1],n,label='all turns',color=turnPalette['all turns'][0],linestyle=turnPalette['all turns'][1])
-    #turn_times=df.loc[df['Rewarded']]
+    #turn_times=traj_df.loc[traj_df['Rewarded']]
     #if len(turn_times) == 0:
-    turn_times = df.loc[(df['typeOfTurn'] == "gogt") | (df['typeOfTurn'] == "gogd")]
+    turn_times = traj_df.loc[(traj_df['typeOfTurn'] == "gogt") | (traj_df['typeOfTurn'] == "gogd")]
     turn_times=turn_times['time'].to_numpy()
     n, bins, patches = ax.hist(turn_times, bins, density=False, histtype='step',
                                cumulative=True, label="rewarded",color=turnPalette["gogd"])
@@ -1081,15 +1081,15 @@ def figure_title(session, phase, direction, cno):
     _cno = " | session CNO" if cno else ""
     return f"{session}\nPhase {phase} | Directions: {_direction}{_cno}"
 
-def get_phase_direction_cno(session_param):
+def get_phase_direction_cno(param_df):
     try:
-        if not session_param.loc[session_param.index[0], "allowRewardDelivery"]:
+        if not param_df.loc[param_df.index[0], "allowRewardDelivery"]:
             phase = 0  # if no reward can be given, then it's the free exploration
-        elif session_param.loc[session_param.index[0], "number_of_alternativeObject"] == 1:
+        elif param_df.loc[param_df.index[0], "number_of_alternativeObject"] == 1:
             phase = 4  # if only one alternative is available for the objects at a given time in the session, it's session 4
-        elif session_param.loc[session_param.index[0], "number_of_alternativeObject"] == 3:
+        elif param_df.loc[param_df.index[0], "number_of_alternativeObject"] == 3:
             phase = 3  # then it's phase 3
-        elif session_param.loc[session_param.index[0], "potentialRewardedDirections"] == '[90, 270]':
+        elif param_df.loc[param_df.index[0], "potentialRewardedDirections"] == '[90, 270]':
             phase = 1
         else:
             phase = 2
@@ -1097,10 +1097,10 @@ def get_phase_direction_cno(session_param):
         print("Error in getting the phase")
         phase = -1
 
-    direction = session_param.loc[session_param.index[0], "potentialRewardedDirections"]
+    direction = param_df.loc[param_df.index[0], "potentialRewardedDirections"]
 
     try:
-        cno = session_param.loc[session_param.index[0], "injectionCNO"] != "none"
+        cno = param_df.loc[param_df.index[0], "injectionCNO"] != "none"
     except KeyError:
         cno = False
 
