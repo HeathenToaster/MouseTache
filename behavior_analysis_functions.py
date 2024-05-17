@@ -230,7 +230,7 @@ def cut_in_epoch_speed(cut_off_speed, speed_values, time, MINIMAL_DURATION_STOP,
 
     if beginning_epoch == 0:
         pass #once the loop is ended check if there is a suitable epoch in memory
-    elif list_of_epochs != [] and (time[beginning_epoch] - time[list_of_epochs[-1][1]] < MINIMAL_DURATION_STOP):#if the interval with the previous epoch was too short, change its end to the end of this epoch
+    elif list_of_epochs != [] and (time[beginning_epoch] - time[list_of_epochs[-1][1]] < MINIMAL_DURATION_STOP): #if the interval with the previous epoch was too short, change its end to the end of this epoch
         list_of_epochs[-1][1] = i-1
         beginning_epoch = 0
     elif (time[speed_size - 1] - time[beginning_epoch]) < MINIMAL_DURATION_EPOCH:
