@@ -430,6 +430,7 @@ def analysis_trajectory(time, xgauss, ygauss,
                 #if the beginning of the epoch is not in a goal, it is considered a trajectory toward an object
                 else:
                     list_epochs[a][2] = "T" + current_patch
+    print(list_epochs) # TEST
 
     return distances_gauss, speeds_gauss, time_average, acceleration, angles, angular_speed, list_epochs
 
@@ -513,6 +514,7 @@ def process_session(mouseFolder_Path, session, process=False):
             #        stops_type["unrewarded"].append([list_epochs[i][1], list_epochs[i + 1][0]])
 
         list_quarter_turn = [epoch for epoch in list_epochs if epoch[2][0] == "Q"] #Gets the list of all quarter turns
+        print(f"list_QT = {list_quarter_turn}") # TEST
         list_between_objects = [epoch for epoch in list_epochs if epoch[2][0] == "B"] #Gets all trajectories between objects
         list_toward_object = [epoch for epoch in list_epochs if epoch[2][0] == "T"] #Gets all trajectories towards objects
         list_movement_not_quarter = [epoch for epoch in list_epochs if epoch[2][0] == "N"] #Gets all explorative trajectories
