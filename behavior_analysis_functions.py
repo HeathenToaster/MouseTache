@@ -314,6 +314,8 @@ def analysis_trajectory(time, xgauss, ygauss,
     """
 
     # compute the distance but on the data with the gaussian filter
+    #print(xgauss) # Print added to do tests and verifications
+    #print(ygauss)
     distances_gauss = np.array([((((xgauss[i]-xgauss[i-1])**2)+((ygauss[i]-ygauss[i-1])**2))**0.5) for i in range(1,len(ygauss))])
     distances_gauss = np.insert(distances_gauss *(0.84/RESOLUTION[0]), 0, 0)
 
