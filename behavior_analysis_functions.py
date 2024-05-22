@@ -353,51 +353,58 @@ def analysis_trajectory(time, xgauss, ygauss,
         not_past_nor_found = True
         i = 0
         turn_time = turns_df.loc[turns_df.index[aprime], "time"]    #turns_df.iat[aprime , 0]
-        if time[list_epochs[-1][1]] < turn_time: #if the last epoch end before the recorded turn, discard the turn
+        if time[list_epochs[-1][1]] < turn_time: # If the last epoch end before the recorded turn, discard the turn
             not_past_nor_found = False
 
         while not_past_nor_found:
             if time[list_epochs[i][1]] < turn_time:
-                i+=1 #if the end of the epoch is before the time of the turn, the epoch does not contain the turn so try the next epoch. We work with the original list of epochs
-            elif time[list_epochs[i][0]] > turn_time:#if we reach a point where the beginning of the epoch is after the turn, then the turn was not in an epoch
-                not_past_nor_found = False
-            else: #if the time is in this epoch, test if this is a true quarter turn
-                    #check if the beginning of the epoch (movement) is in the polygon it's supposed to                                                                             #check if the beginning of the epoch (movement) is in the polygon it's supposed to
+                # If the end of the epoch is before the time of the turn, the epoch does not contain the turn so try the next epoch
+                i+=1
 
-                #set the value of  epoch[3] for this epoch to the number of reward the aniimal had at the beginning off the movement
+            # If we reach a point where the beginning of the epoch is after the turn, then the turn was not in an epoch
+            elif time[list_epochs[i][0]] > turn_time:
+                not_past_nor_found = False
+
+            # If the time is in this epoch, test if this is a true QT
+            else:
+                    # Check if the beginning of the epoch (movement) is in the polygon it's supposed to                                                                         #check if the beginning of the epoch (movement) is in the polygon it's supposed to
+
+                # Set the value of epoch[3] to the nb of rewards the animal had at the beginning of the movement
                 list_epochs[i][3] = turns_df.loc[turns_df.index[aprime - 1], "totalnberOfRewards"] #turns_df.iat[aprime -1, 14]
 
                 if points_in_polygon(polygon = collection_trapeze[turns_df.loc[turns_df.index[aprime], "currentPatch"]][turns_df.loc[turns_df.index[aprime], "previousTrapeze"]], pts = [[xgauss[list_epochs[i][0]], ygauss[list_epochs[i][0]]]]) and points_in_polygon(polygon = collection_trapeze[turns_df.loc[turns_df.index[aprime], "currentPatch"]][turns_df.loc[turns_df.index[aprime], "currentTrapeze"]], pts= [[xgauss[list_epochs[i][1]], ygauss[list_epochs[i][1]]]]):
-                    #current patch is obtained from a number between 0 and 3 indicating in which patch it is (True = 1, False = 0)
+                    
+                    # Current patch is obtained from a number between 0 and 3 indicating in which patch it is (True = 1, False = 0)
                     current_patch = whichPatch((xgauss[list_epochs[i][0]] < RESOLUTION[0] / 2) * 1 + (ygauss[list_epochs[i][0]] < RESOLUTION[1] / 2) * 2)
 
-                    #check if the mouse does not go to another patch. If it does, it is not a quarter turn
+                    # Check if the mouse does not go to another patch. If it does, it is not a QT
                     if stay_in_patch(current_patch, xgauss[list_epochs[i][0]:list_epochs[i][1] + 1], ygauss[list_epochs[i][0]: list_epochs[i][1] + 1], RESOLUTION):
                         if int(turns_df.iat[aprime, 7]) == 90:
-                            turn_direction = "k"  #add a marker depending of the type of turn ; here counterclockwise 
-                        else: turn_direction = "w" #here clockwise
+                            # Add a marker depending of the type of turn 
+                            turn_direction = "k" # Counterclockwise
+                        else: turn_direction = "w" # Clockwise
 
-                        #select the type of turn
+                        # Select the type of turn
                         if len(turns_df.loc[turns_df.index[aprime], "typeOfTurn"]) == 6:
-                            t_turn = 'E' #E stand for Extra turn
+                            type_of_turn = 'E' #E = Extra turn
                         elif turns_df.loc[turns_df.index[aprime], "typeOfTurn"][0] == 'b':
                             if turns_df.loc[turns_df.index[aprime], "typeOfTurn"][2] == 'b':
-                                t_turn = 'H' #H for horrible (neither good direction nor good good object)
+                                type_of_turn = 'H' #H = bad object bad direction
                             else:
-                                t_turn = 'O' # O stand for wrong Object
+                                type_of_turn = 'O' # O = wrong object
                         elif turns_df.loc[turns_df.index[aprime], "typeOfTurn"][2] == 'b':
-                            t_turn = 'B'# B stand for Bad turn
+                            type_of_turn = 'B'# B stand for Bad turn
                         elif turns_df.loc[turns_df.index[aprime], "typeOfTurn"][0] == 'e':
-                            t_turn = 'X' # X for exploration
+                            type_of_turn = 'X' # X for exploration
                         else:
-                            t_turn = 'G' # G stands for Good turn
+                            type_of_turn = 'G' # G stands for Good turn
 
                         if turns_df.loc[turns_df.index[aprime], "Rewarded"]:
                             reward = "R"
                         else:
                             reward = "N"
 
-                        list_epochs[i][2] = "Q" + turn_direction + t_turn + current_patch + reward# Q for quarter turn.
+                        list_epochs[i][2] = "Q" + turn_direction + type_of_turn + current_patch + reward# Q for quarter turn.
                     else:
                         in_an_epoch_but_no_quarter += [(turn_time, i, turns_df.loc[turns_df.index[aprime], "Rewarded"])]
                 else:
