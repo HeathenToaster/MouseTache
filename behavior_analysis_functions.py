@@ -394,7 +394,7 @@ def analysis_trajectory(time, xgauss, ygauss,
                         elif turns_df.loc[turns_df.index[aprime], "typeOfTurn"] == 'bobd':
                             #if turns_df.loc[turns_df.index[aprime], "typeOfTurn"][2] == 'b':
                             #    type_of_turn = 'H' #H = bad object bad direction
-                            type_of_turn = 'H' # H = bad object bad direction 
+                            type_of_turn = 'H' # H = bad object bad direction
                             #else:
                             #    type_of_turn = 'O' # O = wrong object
                         elif turns_df.loc[turns_df.index[aprime], "typeOfTurn"] == 'bogd':
@@ -402,7 +402,7 @@ def analysis_trajectory(time, xgauss, ygauss,
                         #elif turns_df.loc[turns_df.index[aprime], "typeOfTurn"][2] == 'b':
                         #    type_of_turn = 'B'# B stand for Bad turn
                         elif turns_df.loc[turns_df.index[aprime], "typeOfTurn"] == 'gobd':
-                            type_of_turn = 'B' # B = good object bad direction 
+                            type_of_turn = 'B' # B = good object bad direction
                         #elif turns_df.loc[turns_df.index[aprime], "typeOfTurn"][0] == 'e':
                         #    type_of_turn = 'X' # X for exploration
                         elif turns_df.loc[turns_df.index[aprime], "typeOfTurn"] == 'timeout': # new line to replace X
@@ -499,54 +499,54 @@ def process_session(mouseFolder_Path, session, process=False):
     
     """
     if process:
+
         # Load the data
         traj_df, turns_df, param_df = load_data(mouseFolder_Path, session)
         phase, direction, cno = get_phase_direction_cno(param_df)
 
-        ###############################################################################
-        ###############################################################################
-        # unpack the data
-        size_of_traj_df = len(traj_df) #Gets some informations in a more convenient form
+        # Unpack the data
         time = traj_df['time'].to_numpy()
         xposition = traj_df['xposition'].to_numpy()
         yposition = traj_df['yposition'].to_numpy()
-        yposition = RESOLUTION[1] - yposition #yposition is inverted, puts it back in the right way
+        yposition = RESOLUTION[1] - yposition # yposition is inverted, puts it back in the right way
         xgauss = smooth(xposition, TRUE_SIGMA)
-        ygauss = smooth(yposition, TRUE_SIGMA) #Smoothes the positions with true sigma
+        ygauss = smooth(yposition, TRUE_SIGMA) # Smoothes the positions with true sigma
 
-        #Does the actual analysis. The remaining part consists in accessing the pertinent informations and plotting them
+        # Does the actual analysis. The remaining part consists in accessing the pertinent informations and plotting them
         distance, speed, time_average, acceleration, angles, angular_speed, list_epochs = analysis_trajectory(
             time, xgauss, ygauss, collection_trapeze, turns_df, TRUE_CUT_SPEED, TRUE_ECART_ANGLE, RESOLUTION,
             MIN_DURATION_EPOCH=MINIMAL_DURATION_EPOCH, MIN_DURATION_STOP=MINIMAL_DURATION_STOP)
 
-        #prepare lists of epochs corresponding to diffrent type of behavior
+        # Prepare lists of epochs corresponding to diffrent type of behavior
         stops_type = {"rewarded":[], "unrewarded":[]}
         for i in range(len(list_epochs) - 1):
-            if list_epochs[i][2][0] == "Q": #If this is a quarter turn
-                if list_epochs[i][2][2] == "G": #If this is a good turn and thus a rewarded quarter turn
+            if list_epochs[i][2][0] == "Q": # If it's a QT
+                if list_epochs[i][2][2] == "G": # If this is a good turn and thus a rewarded QT
                     stops_type["rewarded"].append([list_epochs[i][1], list_epochs[i + 1][0]])
-                else: #Then the quarter turn was not rewarded
-                    stops_type["unrewarded"].append([list_epochs[i][1], list_epochs[i + 1][0]])
+                else: # Then the QT was not rewarded
+                    stops_type["unrewarded"].append([list_epochs[i][1], list_epochs[i + 1][0]]) 
             #elif list_epochs[i][2][0] == "B": #If this is a between objects
             #    if list_epochs[i][2][5] == 'r': #If the trajectory was rewarded
             #        stops_type["rewarded"].append([list_epochs[i][1], list_epochs[i + 1][0]])
             #    else: #Then the between objects was unrewarded
             #        stops_type["unrewarded"].append([list_epochs[i][1], list_epochs[i + 1][0]])
 
-        list_quarter_turn = [epoch for epoch in list_epochs if epoch[2][0] == "Q"] #Gets the list of all quarter turns
-        #print(f"list_QT = {list_quarter_turn}") # TEST
-        list_between_objects = [epoch for epoch in list_epochs if epoch[2][0] == "B"] #Gets all trajectories between objects
-        list_toward_object = [epoch for epoch in list_epochs if epoch[2][0] == "T"] #Gets all trajectories towards objects
-        list_movement_not_quarter = [epoch for epoch in list_epochs if epoch[2][0] == "N"] #Gets all explorative trajectories
+        list_quarter_turn = [epoch for epoch in list_epochs if epoch[2][0] == "Q"] # All QT
+        list_between_objects = [epoch for epoch in list_epochs if epoch[2][0] == "B"] # All trajectories between objects
+        list_toward_object = [epoch for epoch in list_epochs if epoch[2][0] == "T"] # All trajectories towards objects
+        list_movement_not_quarter = [epoch for epoch in list_epochs if epoch[2][0] == "N"] # All other trajectories
         list_of_stops = [[list_epochs[a - 1][1 ] + 1, list_epochs[a][0] - 1] for a in range(1, len(list_epochs))]
 
-        #Creates a list for each type of quarter turn
+        # Creates a list for each type of QT
         rewarded = [epoch for epoch in list_quarter_turn if epoch[2][2] == 'G']
         unrewarded = [epoch for epoch in list_quarter_turn if epoch[2][2] != 'G']
         extra = [epoch for epoch in list_quarter_turn if epoch[2][2] == 'E']
-        badDirection = [epoch for epoch in list_quarter_turn if epoch[2][2] == 'B']
-        wrongObject = [epoch for epoch in list_quarter_turn if epoch[2][2] == 'O']
-        doubleWrong = [epoch for epoch in list_quarter_turn if epoch[2][2] == 'H']
+        bad_direction = [epoch for epoch in list_quarter_turn if epoch[2][2] == 'B'] # Change name here
+        bad_object = [epoch for epoch in list_quarter_turn if epoch[2][2] == 'O'] # Change name here
+        bad_object_direction = [epoch for epoch in list_quarter_turn if epoch[2][2] == 'H'] # Change name here
+        depleting = [epoch for epoch in list_quarter_turn if epoch[2][2] == 'D'] # Added
+        timeout = [epoch for epoch in list_quarter_turn if epoch[2][2] == 'T'] # Added
+
 
         # between_reward = [epoch for epoch in list_between_objects if epoch[2][5] == 'r']
         # between_unrewarded = [epoch for epoch in list_between_objects if epoch[2][5] == 'n']
