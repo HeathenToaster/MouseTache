@@ -374,8 +374,8 @@ def analysis_trajectory(time, xgauss, ygauss,
                     #check if the mouse does not go to another patch. If it does, it is not a quarter turn
                     if stay_in_patch(current_patch, xgauss[list_epochs[i][0]:list_epochs[i][1] + 1], ygauss[list_epochs[i][0]: list_epochs[i][1] + 1], RESOLUTION):
                         if int(turns_df.iat[aprime, 7]) == 90:
-                            w_turn = "k"  #add a marker depending of the type of turn
-                        else: w_turn = "w"
+                            turn_direction = "k"  #add a marker depending of the type of turn
+                        else: turn_direction = "w"
 
                         #select the type of turn
                         if len(turns_df.loc[turns_df.index[aprime], "typeOfTurn"]) == 6:
@@ -397,7 +397,7 @@ def analysis_trajectory(time, xgauss, ygauss,
                         else:
                             reward = "N"
 
-                        list_epochs[i][2] = "Q" + w_turn + t_turn + current_patch + reward# Q for quarter turn.
+                        list_epochs[i][2] = "Q" + turn_direction + t_turn + current_patch + reward# Q for quarter turn.
                     else:
                         in_an_epoch_but_no_quarter += [(turn_time, i, turns_df.loc[turns_df.index[aprime], "Rewarded"])]
                 else:
