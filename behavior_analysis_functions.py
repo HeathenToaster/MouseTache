@@ -31,7 +31,7 @@ turnPalette= {'gogd':'#86d065', #green
               'gobdet':'#ef2388', #pink
               'all turns':'#49a1f1'} #blue
 
-phasePalette= {'Phase1':'#b4a7d6', #purple
+phasePalette= {'Phase1':'#b4a7d6', #purple # To do redo with type of turn color palette
                'Phase2':'#94ccff', #blue
                'Phase3':'#84d567', #green
                'Phase4':'#f5b779', #orange
@@ -127,9 +127,6 @@ TRUE_SIGMA = 1 #the sigma used for the remaining of the analysis
 TRUE_CUT_SPEED = 7 #value to be used for the remaining of the analysis
 TRUE_ECART_ANGLE = 1 #if a change is made, must change timeofframes
 
-
-
-
 ######################################
 # Base analysis stuff
 # Code should be functional but not tested and checked
@@ -137,7 +134,6 @@ TRUE_ECART_ANGLE = 1 #if a change is made, must change timeofframes
 # Lots of linting and bad practices to fix
 ######################################
 
-################################
 def whichPatch(number):
     """send back the string indicating the current patch based on the number recieved
         # 0 = 'NE', 1 = 'NW', 2 = 'SE', 3 = 'SW'
@@ -154,6 +150,7 @@ def whichPatch(number):
         raise ValueError("The number must be between 0 and 3")
 
 ################################
+
 def search_right_turn(time_start, time_end, turns_df):
     for i in range(len(turns_df)):
         if turns_df.iat[i, 0] > time_start and turns_df.iat[i, 0] < time_end:#if the time of the turn is comprised between the beginning and the end of the epoch
@@ -161,6 +158,7 @@ def search_right_turn(time_start, time_end, turns_df):
     return -1
 
 ################################
+
 def is_in_a_goal(xposition, yposition, current_patch, dictionnaire_of_goals):
     """
     for every goal in the list, test if the position is inside using points_in_polygon. return a bool
@@ -172,7 +170,8 @@ def is_in_a_goal(xposition, yposition, current_patch, dictionnaire_of_goals):
             in_a_trapeze = True
     return in_a_trapeze
 
-######################
+################################
+
 def coordinate_patch(patch): #give a y coordinate corresponding to the
     """give the number corresponding to the patch. Patch must be either 'SW', 'NW', 'SE' or 'NE' """
     if patch == "NE":
@@ -187,6 +186,7 @@ def coordinate_patch(patch): #give a y coordinate corresponding to the
         raise ValueError("The patch must be either 'SW', 'NW', 'SE' or 'NE'")
 
 ################################
+
 def stay_in_patch(patch, xpositions, ypositions, RESOLUTION):
     """ check if the point change patch at a given moment. Patch must be either 'SW', 'NW', 'SE' or 'NE' """
     stay_in_place = True
@@ -202,7 +202,8 @@ def stay_in_patch(patch, xpositions, ypositions, RESOLUTION):
 
     return stay_in_place
 
-############################
+################################
+
 def cut_in_epoch_speed(cut_off_speed, speed_values, time, MINIMAL_DURATION_STOP, MINIMAL_DURATION_EPOCH):
     """
     cut the trajectory into different part where the animal is moving
@@ -282,14 +283,16 @@ def cut_in_epoch_speed(cut_off_speed, speed_values, time, MINIMAL_DURATION_STOP,
         list_of_epochs[i][1] = current_point
     return list_of_epochs
 
-##############################
+################################
+
 def calcul_angle(ycoordinate, ecart, xcoordinate):
     angles = np.array([np.angle(xcoordinate[i]- xcoordinate[i-ecart] + (ycoordinate[i] - ycoordinate[i-ecart]) * 1j , deg= True) for i in range(ecart, len(xcoordinate))])
     angles = np.insert(angles, obj= 0, values= np.zeros(ecart ))#the calcul of angles change the size of the data. To avoid it, add as much time the first value
 
     return angles #return the orientation of the mouse across time and the modified epochs
 
-##############################
+################################
+
 def analysis_trajectory(time, xgauss, ygauss,
                         collection_trapeze, turns_df,
                         cut_speed, ecart_angle, RESOLUTION, MIN_DURATION_STOP, MIN_DURATION_EPOCH):
@@ -315,42 +318,41 @@ def analysis_trajectory(time, xgauss, ygauss,
     See documentation on indicator for more informations
     """
 
-    # compute the distance but on the data with the gaussian filter
-    #print(xgauss) # Print added to do tests and verifications
-    #print(ygauss)
+    # Compute the distance but on the data with the gaussian filter
+
     distances_gauss = np.array([((((xgauss[i]-xgauss[i-1])**2)+((ygauss[i]-ygauss[i-1])**2))**0.5) for i in range(1,len(ygauss))])
     distances_gauss = np.insert(distances_gauss *(0.84/RESOLUTION[0]), 0, 0)
 
-
-    #because the distance is computed using two points, it does no longer correspond to time. To fix it, the average of the time used the calculate the distance is used
-    timebeweenframe = np.insert(np.diff(time), 0, 1)#get the gap between the frames. Add 1 at the beginning to have a consistant size (any value is possible, it will divide 0)
-    #compute the speed in m/s
+    # Because the distance is computed using two points, it does no longer correspond to time. 
+    # To fix it, the average of the time used to calculate the distance is used
+    timebeweenframe = np.insert(np.diff(time), 0, 1) # Get the gap between the frames. Add 1 at the beginning to have a consistant size (any value is possible, it will divide 0)
+    # Compute the speed in m/s
     speeds_gauss = np.divide(distances_gauss,timebeweenframe)
-    #get the speed in cm/s and add a speed of 0 at the beginning to keep the same data size
+    # Get the speed in cm/s and add a speed of 0 at the beginning to keep the same data size
     speeds_gauss = speeds_gauss * 100
     list_epochs = cut_in_epoch_speed(cut_off_speed= cut_speed, speed_values = speeds_gauss, time = time, MINIMAL_DURATION_STOP= MIN_DURATION_STOP,
-                                     MINIMAL_DURATION_EPOCH= MIN_DURATION_EPOCH) #calculate the epochs with the true cut_off speed and store it
+                                     MINIMAL_DURATION_EPOCH= MIN_DURATION_EPOCH) # Calculate the epochs with the true cut_off speed and store it
 
-    #calculate the orientation with the chosen value and get the changed epochs
+    # Calculate the orientation with the chosen value and get the changed epochs
     angles = calcul_angle(ycoordinate= ygauss, ecart= ecart_angle, xcoordinate= xgauss)
     time_average = np.array([time[0]]*ecart_angle + [(time[i] + time[i-ecart_angle]) /2 for i in range(ecart_angle, len(time))])
 
-    angles_relatifs = np.insert(np.diff([angles, time_average])[0], obj= 0, values= np.zeros(1 )) #derive les angles par rapport au temps
-    angular_speed = [360 + x if x < -180 else -360 + x if x>180 else x for x in angles_relatifs] #correct for the brutal acceleration when angle pass from -180 to 180
+    angles_relatifs = np.insert(np.diff([angles, time_average])[0], obj= 0, values= np.zeros(1 )) # Derive angles regarding time
+    angular_speed = [360 + x if x < -180 else -360 + x if x>180 else x for x in angles_relatifs] # Correct for the brutal acceleration when angle pass from -180 to 180
 
-    #calcul of acceleration
-    acceleration = np.insert(np.diff([speeds_gauss, time_average])[0], obj = 0, values= np.zeros(1))#derive speed relative to time
+    # Calcul of acceleration
+    acceleration = np.insert(np.diff([speeds_gauss, time_average])[0], obj = 0, values= np.zeros(1)) # Derive speed relative to time
 
-    #Advance analysis = identify the quarter turns, the trajectory towards and between objetcs
-    #format of a quarter turn indicator: [0] = 'Q' for quarter turn     [1] = 'k'/'w' for counterclockwise / clockwise
+    # Advance analysis = identify the quarter turns, the trajectory towards and between objetcs
+    # Format of a quarter turn indicator: [0] = 'Q' for quarter turn     [1] = 'k'/'w' for counterclockwise / clockwise
     # [2] = 'O'/'E'/'B'/'G'/'H' for wrong object /extra turn / bad direction / Good / double wrong        
     # [3-4] = patch
 
-    #format for between objects indicator: [0] = 'B' for between object    [1 - 2] = previous patch    [3-4] = current patch
+    # Format for between objects indicator: [0] = 'B' for between object    [1 - 2] = previous patch    [3-4] = current patch
     # [5] = 'n'/'r' for non-rewarded/ rewarded (if multiple turns are done in the movement, only the last one is considered)
-    in_an_epoch_but_no_quarter = [] #will contain a list under the form [time, corresponding epoch, bool rewarded]
+    in_an_epoch_but_no_quarter = [] # Will contain a list under the form [time, corresponding epoch, bool rewarded]
 
-    for a in range(turns_df.index[0], turns_df.index[-1]):#the epochs are written as "not a quarter" by default. We just need to change it for those which are
+    for a in range(turns_df.index[0], turns_df.index[-1]): # The epochs are written as "not a quarter" by default. We just need to change it for those which are
         aprime = a - turns_df.index[0]
         not_past_nor_found = True
         i = 0
@@ -387,24 +389,14 @@ def analysis_trajectory(time, xgauss, ygauss,
                         else: turn_direction = "w" # Clockwise
 
                         # Select the type of turn
-                        #if len(turns_df.loc[turns_df.index[aprime], "typeOfTurn"]) == 6: ### BIG CHANGE HERE
                         if turns_df.loc[turns_df.index[aprime], "typeOfTurn"] == 'gogdet':
                             type_of_turn = 'E' # E = Extra turn
-                        #elif turns_df.loc[turns_df.index[aprime], "typeOfTurn"][0] == 'b':
                         elif turns_df.loc[turns_df.index[aprime], "typeOfTurn"] == 'bobd':
-                            #if turns_df.loc[turns_df.index[aprime], "typeOfTurn"][2] == 'b':
-                            #    type_of_turn = 'H' #H = bad object bad direction
                             type_of_turn = 'H' # H = bad object bad direction
-                            #else:
-                            #    type_of_turn = 'O' # O = wrong object
                         elif turns_df.loc[turns_df.index[aprime], "typeOfTurn"] == 'bogd':
                             type_of_turn = 'O' # O = bad object good direction
-                        #elif turns_df.loc[turns_df.index[aprime], "typeOfTurn"][2] == 'b':
-                        #    type_of_turn = 'B'# B stand for Bad turn
                         elif turns_df.loc[turns_df.index[aprime], "typeOfTurn"] == 'gobd':
                             type_of_turn = 'B' # B = good object bad direction
-                        #elif turns_df.loc[turns_df.index[aprime], "typeOfTurn"][0] == 'e':
-                        #    type_of_turn = 'X' # X for exploration
                         elif turns_df.loc[turns_df.index[aprime], "typeOfTurn"] == 'timeout': # new line to replace X
                             type_of_turn = 'T' # T = timeout
                         elif turns_df.loc[turns_df.index[aprime], "typeOfTurn"] == 'gogdnr': # new line to extract depleting from extra turns
@@ -426,7 +418,7 @@ def analysis_trajectory(time, xgauss, ygauss,
                 not_past_nor_found = False # The correct epoch was found, no need to continue
 
     for a in range(len(list_epochs)):
-        if list_epochs[a][2][0] == "N":  #if the epoch is not a QT, look at if it can be either a movement between objects or a movement towards an object
+        if list_epochs[a][2][0] == "N":  # If the epoch is not a QT, look at if it can be either a movement between objects or a movement towards an object
             current_patch = whichPatch((xgauss[list_epochs[a][1]] < RESOLUTION[0] / 2) * 1 + (ygauss[list_epochs[a][1]] < RESOLUTION[1] / 2) * 2)
 
             # If the epoch end in a trapeze it's either a movement towards an object or a movement between objects, or a very small exploration epoch
