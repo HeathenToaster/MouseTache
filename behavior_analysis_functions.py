@@ -238,8 +238,10 @@ def cut_in_epoch_speed(cut_off_speed, speed_values, time, MINIMAL_DURATION_STOP,
     else:
         list_of_epochs.append([beginning_epoch, speed_size - 1, "N", 0]) #the N at the end is for "not a quarter turn". every epoch is not a quarter turn until proven otherwise
 
-    size_len_epoch = len(list_of_epochs)
-    a = 0#check if the epoch is long enough
+    size_len_epoch = len(list_of_epochs) # Number of epochs in the list
+    a = 0
+    
+    # Check if the epoch is long enough
     while a < size_len_epoch:
         if (time[list_of_epochs[a][1]] - time[list_of_epochs[a][0]]) < MINIMAL_DURATION_EPOCH:
             _ = list_of_epochs.pop(a) #if the epoch is too short to be considerded, discard it
@@ -380,24 +382,35 @@ def analysis_trajectory(time, xgauss, ygauss,
                     # Check if the mouse does not go to another patch. If it does, it is not a QT
                     if stay_in_patch(current_patch, xgauss[list_epochs[i][0]:list_epochs[i][1] + 1], ygauss[list_epochs[i][0]: list_epochs[i][1] + 1], RESOLUTION):
                         if int(turns_df.iat[aprime, 7]) == 90:
-                            # Add a marker depending of the type of turn 
+                            # Add a marker depending of the type of turn
                             turn_direction = "k" # Counterclockwise
                         else: turn_direction = "w" # Clockwise
 
                         # Select the type of turn
-                        if len(turns_df.loc[turns_df.index[aprime], "typeOfTurn"]) == 6:
-                            type_of_turn = 'E' #E = Extra turn
-                        elif turns_df.loc[turns_df.index[aprime], "typeOfTurn"][0] == 'b':
-                            if turns_df.loc[turns_df.index[aprime], "typeOfTurn"][2] == 'b':
-                                type_of_turn = 'H' #H = bad object bad direction
-                            else:
-                                type_of_turn = 'O' # O = wrong object
-                        elif turns_df.loc[turns_df.index[aprime], "typeOfTurn"][2] == 'b':
-                            type_of_turn = 'B'# B stand for Bad turn
-                        elif turns_df.loc[turns_df.index[aprime], "typeOfTurn"][0] == 'e':
-                            type_of_turn = 'X' # X for exploration
+                        #if len(turns_df.loc[turns_df.index[aprime], "typeOfTurn"]) == 6: ### BIG CHANGE HERE
+                        if turns_df.loc[turns_df.index[aprime], "typeOfTurn"] == 'gogdet':
+                            type_of_turn = 'E' # E = Extra turn
+                        #elif turns_df.loc[turns_df.index[aprime], "typeOfTurn"][0] == 'b':
+                        elif turns_df.loc[turns_df.index[aprime], "typeOfTurn"] == 'bobd':
+                            #if turns_df.loc[turns_df.index[aprime], "typeOfTurn"][2] == 'b':
+                            #    type_of_turn = 'H' #H = bad object bad direction
+                            type_of_turn = 'H' # H = bad object bad direction 
+                            #else:
+                            #    type_of_turn = 'O' # O = wrong object
+                        elif turns_df.loc[turns_df.index[aprime], "typeOfTurn"] == 'bogd':
+                            type_of_turn = 'O' # O = bad object good direction
+                        #elif turns_df.loc[turns_df.index[aprime], "typeOfTurn"][2] == 'b':
+                        #    type_of_turn = 'B'# B stand for Bad turn
+                        elif turns_df.loc[turns_df.index[aprime], "typeOfTurn"] == 'gobd':
+                            type_of_turn = 'B' # B = good object bad direction 
+                        #elif turns_df.loc[turns_df.index[aprime], "typeOfTurn"][0] == 'e':
+                        #    type_of_turn = 'X' # X for exploration
+                        elif turns_df.loc[turns_df.index[aprime], "typeOfTurn"] == 'timeout': # new line to replace X
+                            type_of_turn = 'T' # T = timeout
+                        elif turns_df.loc[turns_df.index[aprime], "typeOfTurn"] == 'gogdnr': # new line to extract depleting from extra turns
+                            type_of_turn = 'D' # D = depleting or good object good direction non rewarded
                         else:
-                            type_of_turn = 'G' # G stands for Good turn
+                            type_of_turn = 'G' # G = good object good direction
 
                         if turns_df.loc[turns_df.index[aprime], "Rewarded"]:
                             reward = "R"
