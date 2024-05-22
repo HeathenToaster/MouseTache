@@ -374,8 +374,8 @@ def analysis_trajectory(time, xgauss, ygauss,
                     #check if the mouse does not go to another patch. If it does, it is not a quarter turn
                     if stay_in_patch(current_patch, xgauss[list_epochs[i][0]:list_epochs[i][1] + 1], ygauss[list_epochs[i][0]: list_epochs[i][1] + 1], RESOLUTION):
                         if int(turns_df.iat[aprime, 7]) == 90:
-                            turn_direction = "k"  #add a marker depending of the type of turn
-                        else: turn_direction = "w"
+                            turn_direction = "k"  #add a marker depending of the type of turn ; here counterclockwise 
+                        else: turn_direction = "w" #here clockwise
 
                         #select the type of turn
                         if len(turns_df.loc[turns_df.index[aprime], "typeOfTurn"]) == 6:
