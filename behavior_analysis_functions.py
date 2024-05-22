@@ -547,7 +547,6 @@ def process_session(mouseFolder_Path, session, process=False):
         depleting = [epoch for epoch in list_quarter_turn if epoch[2][2] == 'D'] # Added
         timeout = [epoch for epoch in list_quarter_turn if epoch[2][2] == 'T'] # Added
 
-
         # between_reward = [epoch for epoch in list_between_objects if epoch[2][5] == 'r']
         # between_unrewarded = [epoch for epoch in list_between_objects if epoch[2][5] == 'n']
 
