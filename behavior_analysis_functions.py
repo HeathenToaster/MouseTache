@@ -417,40 +417,40 @@ def analysis_trajectory(time, xgauss, ygauss,
                         else:
                             reward = "N"
 
-                        list_epochs[i][2] = "Q" + turn_direction + type_of_turn + current_patch + reward# Q for quarter turn.
+                        list_epochs[i][2] = "Q" + turn_direction + type_of_turn + current_patch + reward # Q = quarter turn
                     else:
                         in_an_epoch_but_no_quarter += [(turn_time, i, turns_df.loc[turns_df.index[aprime], "Rewarded"])]
                 else:
                     in_an_epoch_but_no_quarter += [(turn_time, i, turns_df.loc[turns_df.index[aprime], "Rewarded"])]
 
-                not_past_nor_found = False # the correct epoch was found, no need to continue
+                not_past_nor_found = False # The correct epoch was found, no need to continue
 
     for a in range(len(list_epochs)):
-        if list_epochs[a][2][0] == "N":  #if the epoch is not a quarter_turn, look at if it can be either a movement between objects or a movement towards an object
-            #current patch is a number between 0 and 3 indicating in which patch it is (True = 1, False = 0)
-            # 0 = NE, 1 = NW, 2 = SE, 3 = SW
+        if list_epochs[a][2][0] == "N":  #if the epoch is not a QT, look at if it can be either a movement between objects or a movement towards an object
             current_patch = whichPatch((xgauss[list_epochs[a][1]] < RESOLUTION[0] / 2) * 1 + (ygauss[list_epochs[a][1]] < RESOLUTION[1] / 2) * 2)
 
-            #if the epoch end in a trapeze it's either a movement towards an object or a movement between objects, or a very small exploration epoch
+            # If the epoch end in a trapeze it's either a movement towards an object or a movement between objects, or a very small exploration epoch
             if is_in_a_goal(xgauss[list_epochs[a][1]], ygauss[list_epochs[a][1]], current_patch, collection_trapeze):
                 previous_patch = whichPatch((xgauss[list_epochs[a][0]] < RESOLUTION[0] / 2) * 1 + (ygauss[list_epochs[a][0]] < RESOLUTION[0] / 2) * 2)
 
-                #check if the beginning of the epoch was also in a trapeze
+                # Check if the beginning of the epoch was also in a trapeze
                 if is_in_a_goal(xgauss[list_epochs[a][0]], ygauss[list_epochs[a][0]], previous_patch, collection_trapeze):
                     if current_patch == previous_patch:
-                        #we consider two possibilities in this case: either this is a small exploration trajectory or
-                        # the animal move to multiple objects while trying to find the reward and end in the same patch in a between object trajectory
+
+                        # We consider two possibilities in this case:
+                        # - either this is a small exploration trajectory or
+                        # - the animal move to multiple objects while trying to find the reward and end in the same patch in a between object trajectory
                         if not stay_in_patch(current_patch, xgauss[list_epochs[a][0]:list_epochs[a][1] + 1], ygauss[list_epochs[a][0]:list_epochs[a][1] + 1], RESOLUTION):
-                            #then it's a between object trajectory
+
+                            # Then it's a between objects trajectory
                             list_epochs[a][2] = "B" + previous_patch + current_patch + 'n' # n for n rewards
-                        #else nothing, the exploratory trajectory are marked by an 'N' Which is the default
-                    #if previous_patch and current patch are different, it's a trajectory between object
+                        # Else nothing, the exploratory trajectory are marked by an 'N' Which is the default
+                    # If previous_patch and current patch are different, it's a trajectory between objects
                     else:
                         list_epochs[a][2] = "B" + previous_patch + current_patch + 'n' # n for no rewards
-                #if the beginning of the epoch is not in a goal, it is considered a trajectory toward an object
+                # If the beginning of the epoch is not in a goal, it is considered a trajectory toward an object
                 else:
                     list_epochs[a][2] = "T" + current_patch
-    #print(list_epochs) # TEST
 
     return distances_gauss, speeds_gauss, time_average, acceleration, angles, angular_speed, list_epochs
 
