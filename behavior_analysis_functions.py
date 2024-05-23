@@ -9,11 +9,13 @@ are also some bad practices in the code that should be fixed.
 """
 
 import os
+import pickle
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from scipy.ndimage import gaussian_filter as smooth
 from matplotlib.patches import Polygon
+from typing import Any
 plt.style.use('./paper.mplstyle')
 
 ######################################
@@ -683,6 +685,53 @@ def load_data(mouseFolder_Path, session):
         print("File turnsinfo not found")
 
     return traj_df, turns_df, param_df
+
+def pickle_data(data, path: str, filename: str) -> None :
+    """
+    Pickles the given variable and saves it to a specified path with the given filename
+
+    Parameters:
+    - data (any serializable object): The data to be pickled.
+    - path (str): The directory path where the file will be saved.
+    - filename (str): The name of the file where the data will be saved.
+    """
+    try:
+        # Ensure the directory exists
+        os.makedirs(path, exist_ok=True)
+        
+        # Create the full file path
+        full_path = os.path.join(path, filename)
+        
+        # Write the data to the file
+        with open(full_path, 'wb') as file:
+            pickle.dump(data, file)
+        print(f"Data successfully pickled to {full_path}")
+    except Exception as e:
+        print(f"An error occurred while pickling data: {e}")
+
+def unpickle_data(path : str, filename : str) -> None :
+    """
+    Unpickles data from a specified path and filename
+
+    Parameters:
+    - path (str): The directory path where the file is saved.
+    - filename (str): The name of the file to read the data from.
+    
+    Returns:
+    any: The unpickled data.
+    """
+    try:
+        # Create the full file path
+        full_path = os.path.join(path, filename)
+        
+        # Read the data from the file
+        with open(full_path, 'rb') as file:
+            data = pickle.load(file)
+        print(f"Data successfully unpickled from {full_path}")
+        return data
+    except Exception as e:
+        print(f"An error occurred while unpickling data: {e}")
+        return None
 
 def figure_coloreddot(turns_df, time, list_epochs, list_quarter_turn, time_average, list_between_objects, ax=None):
     if ax is None:
