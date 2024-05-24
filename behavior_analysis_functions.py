@@ -806,8 +806,8 @@ def figure_coloreddot(turns_df, time, list_epochs, list_quarter_turn, time_avera
             serie = 0
 
     ax.plot([time_average[i[0]] if i[2][0] == "Q"  else time_average[i[1]] for i in list_epochs if i[2][0] == "Q" or i[2][0] == "B"],
-            [coordinate_patch(i[2][3:5]) for i in list_epochs if i[2][0] == "Q" or i[2][0] == "B"], 
-            c= "palegoldenrod", lw = 2, zorder = 1)
+            [coordinate_patch(i[2][3:5]) for i in list_epochs if i[2][0] == "Q" or i[2][0] == "B"],
+            c= "palegoldenrod", lw = 0.8, zorder = 1)
 
     # Plots the trajectory between objects
     if len(list_between_objects) != 0:
@@ -824,7 +824,7 @@ def figure_coloreddot(turns_df, time, list_epochs, list_quarter_turn, time_avera
         if len(current_list) != 0:
             ax.scatter([i[0] for i in current_list],
                        [coordinate_patch(i[1]) + 0.1 for i in current_list],
-                        c=colors[a], label=[" ", "no "][a] + "reward", s=2 , zorder=2)
+                        c=colors[a], label=[" ", "no "][a] + "reward", s=0.5 , zorder=2)
         else:
             pass
 
@@ -853,6 +853,7 @@ def figure_coloreddot(turns_df, time, list_epochs, list_quarter_turn, time_avera
     ax.set_ylim(0,5)
     ax.set_xlim(0, 900)
     ax.legend(loc='best')
+    plt.show()
 
 def figure_trajectories(traj_df, current_movement, xgauss, ygauss, speed, angular_speed, acceleration, title='', axs=None):
     if axs is None:
