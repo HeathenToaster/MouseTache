@@ -549,8 +549,8 @@ def process_session(mouseFolder_Path, session, process=False):
         depleting = [epoch for epoch in list_quarter_turn if epoch[2][2] == 'D'] # Added
         timeout = [epoch for epoch in list_quarter_turn if epoch[2][2] == 'T'] # Added
 
-        # between_reward = [epoch for epoch in list_between_objects if epoch[2][5] == 'r']
-        # between_unrewarded = [epoch for epoch in list_between_objects if epoch[2][5] == 'n']
+        #between_reward = [epoch for epoch in list_between_objects if epoch[2][5] == 'r'] # Was commented
+        #between_unrewarded = [epoch for epoch in list_between_objects if epoch[2][5] == 'n'] # Was commented
 
         anti_clock_turn = [epoch for epoch in list_quarter_turn if epoch[2][1] == "k"]
         clock_turn = [epoch for epoch in list_quarter_turn if epoch[2][1] == "w"]
@@ -558,6 +558,34 @@ def process_session(mouseFolder_Path, session, process=False):
 
         when_reward = [[turns_df.loc[a, "time"], turns_df.loc[a, "currentPatch"]] for a in turns_df.index if turns_df.loc[a, "Rewarded"]]
         when_no_reward = [[turns_df.loc[a, "time"], turns_df.loc[a, "currentPatch"]] for a in turns_df.index if not turns_df.loc[a, "Rewarded"]]
+        
+        ############################################
+
+        #Creates pickel for number of rewarded and unrewarded quarters / number of CW and CCW turns
+
+        reward_number=len(rewarded)
+        unreward_number=len(unrewarded)
+        extra_number=len(extra)
+        bad_direction_number = len(bad_direction)
+        bad_object_number = len(bad_object)
+        bad_objectdirection_number = len(bad_object_direction)
+        depleting_number = len(depleting)
+        timeout_number = len(timeout)
+        anti_clock_number = len(anti_clock_turn)
+        clock_number = len(clock_turn)
+
+        filename = mouseFolder_Path + '/' + session + '/' + 'pickle_total_QT_types.pkl'
+    
+        pickle_data(data=(reward_number,unreward_number,extra_number,bad_direction_number,bad_object_number,
+                     bad_objectdirection_number,depleting_number,timeout_number,clock_number,anti_clock_number), 
+                     path = mouseFolder_Path + os.sep + session + os.sep + session + os.sep + 'Pickles_datas/',
+                     filename = 'pickle_total_QT_types.pkl')
+
+        CW_turn=len(clock_turn)
+        CCW_turn=len(anti_clock_turn)
+        filename2 = mouseFolder_Path + '/' + session + '/' + 'pickle_total_CW_CCW.pkl'
+    
+        pickle.dump((CW_turn, CCW_turn), open(filename2, 'wb'))
 
         ######################################################
         # Figure creation  ~10sec
@@ -680,36 +708,42 @@ def load_data(mouseFolder_Path, session):
         for i in range(turns_df.index.values[-1]):  # if there is a missing value for ongoingRewardedObject, replace it with either SW or SE, as long as it's not the one where the mouse is
             if type(turns_df['ongoingRewardedObject'][i]) == float:
                 turns_df.iat[i, 8] = str([turns_df.iat[i, 4]])
-        turns_df = turns_df.loc[turns_df['time'] > 15]  # FIXME: il y a des artefacts sur les premieres secondes de videos, donc il faut les supprimer
+        turns_df = turns_df.loc[turns_df['time'] > 15]  #FIXME: il y a des artefacts sur les premieres secondes de videos, donc il faut les supprimer
     except FileNotFoundError:
         print("File turnsinfo not found")
 
     return traj_df, turns_df, param_df
 
-def pickle_data(data, path: str, filename: str) -> None :
+def pickle_data(data, animal_folder: str, filename: str) -> None:
     """
-    Pickles the given variable and saves it to a specified path with the given filename
+    Pickle data and register in a specific folder with a specific name. 
 
-    Parameters:
-    - data (any serializable object): The data to be pickled.
-    - path (str): The directory path where the file will be saved.
-    - filename (str): The name of the file where the data will be saved.
+    Parameters :
+    - data (any serializable object): data to serialize.
+    - animal_folder (str): path to the animal folder.
+    - filename (str): name of file where data are registered.
     """
-    try:
-        # Ensure the directory exists
-        os.makedirs(path, exist_ok=True)
+    # Define 'Pickle_data' folder path inside the animal folder
+    pickle_folder = 'Pickle_data'
+    target_dir = os.path.join(animal_folder, pickle_folder)
         
-        # Create the full file path
-        full_path = os.path.join(path, filename)
+    # Check if 'Pickle_data' folder already exists, if not then create it
+    if not os.path.exists(target_dir):
+        os.makedirs(target_dir)
+        #print(f"Folder {target_dir} created.")
+    #else:
+        #print(f"Folder {target_dir} already exists.")
         
-        # Write the data to the file
-        with open(full_path, 'wb') as file:
-            pickle.dump(data, file)
-        print(f"Data successfully pickled to {full_path}")
-    except Exception as e:
-        print(f"An error occurred while pickling data: {e}")
+    # Create the full path of file inside 'Pickle_data' folder
+    full_path = os.path.join(target_dir, filename)
+        
+    # Write data in the file
+    with open(full_path, 'wb') as file:
+        pickle.dump(data, file)
+        
+    #print(f"Data serialized and saved in {full_path}")
 
-def unpickle_data(path : str, filename : str) -> None :
+def unpickle_data(path : str, filename : str) :
     """
     Unpickles data from a specified path and filename
 
@@ -727,7 +761,7 @@ def unpickle_data(path : str, filename : str) -> None :
         # Read the data from the file
         with open(full_path, 'rb') as file:
             data = pickle.load(file)
-        print(f"Data successfully unpickled from {full_path}")
+        #print(f"Data successfully unpickled from {full_path}")
         return data
     except Exception as e:
         print(f"An error occurred while unpickling data: {e}")
