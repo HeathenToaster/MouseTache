@@ -579,7 +579,7 @@ def process_session(mouseFolder_Path, session, process=False):
 
         ######################################################
         # Figure creation  ~10sec
-        summary_fig = plt.figure(figsize=(14, 12), constrained_layout=True, facecolor='w', dpi=180)
+        summary_fig = plt.figure(figsize=(14, 12), constrained_layout=True, facecolor='w', dpi=150)
         gs = summary_fig.add_gridspec(6, 8, height_ratios=[1, 1, 1, 1, 1, 1], #hspace=0.5,
                                     width_ratios=[1, 1, 1, 1, 1, .1, 1, 1],# wspace=0.5
                                     )  # 6 rows, 8 columns
@@ -780,8 +780,6 @@ def figure_coloreddot(turns_df, time, list_epochs, list_quarter_turn, time_avera
     bad_direction = [epoch for epoch in list_quarter_turn if epoch[2][2] == 'B']
     bad_object = [epoch for epoch in list_quarter_turn if epoch[2][2] == 'O']
     bad_object_direction = [epoch for epoch in list_quarter_turn if epoch[2][2] == 'H']
-    anti_clock_turn = [epoch for epoch in list_quarter_turn if epoch[2][1] == "k"]
-    clock_turn = [epoch for epoch in list_quarter_turn if epoch[2][1] == "w"]
     timeout_turn = [epoch for epoch in list_quarter_turn if epoch[2][2] == 'T']
     depl_turn = [epoch for epoch in list_quarter_turn if epoch[2][2] == 'D']
 
@@ -807,14 +805,14 @@ def figure_coloreddot(turns_df, time, list_epochs, list_quarter_turn, time_avera
 
     ax.plot([time_average[i[0]] if i[2][0] == "Q"  else time_average[i[1]] for i in list_epochs if i[2][0] == "Q" or i[2][0] == "B"],
             [coordinate_patch(i[2][3:5]) for i in list_epochs if i[2][0] == "Q" or i[2][0] == "B"],
-            c= "palegoldenrod", lw = 0.8, zorder = 1)
+            c= "palegoldenrod", lw = 0.9, zorder = 1)
 
     # Plots the trajectory between objects
     if len(list_between_objects) != 0:
         # change the "between objects with/without reward" par bo rewarded or unrewarded
         ax.scatter([time_average[i[1]] for i in list_between_objects],
                    [coordinate_patch(i[2][3:5]) for i in list_between_objects],
-                   c="turquoise", label = "between object ", marker= "x", zorder = 2)
+                   c="turquoise", label = "between object ", marker= "x", s=3, zorder = 2)
     else:
         pass
 
@@ -824,7 +822,7 @@ def figure_coloreddot(turns_df, time, list_epochs, list_quarter_turn, time_avera
         if len(current_list) != 0:
             ax.scatter([i[0] for i in current_list],
                        [coordinate_patch(i[1]) + 0.1 for i in current_list],
-                        c=colors[a], label=[" ", "no "][a] + "reward", s=0.5 , zorder=2)
+                        c=colors[a], label=[" ", "no "][a] + "reward", s=0.08 , zorder=2)
         else:
             pass
 
@@ -839,7 +837,7 @@ def figure_coloreddot(turns_df, time, list_epochs, list_quarter_turn, time_avera
                        [coordinate_patch(i[2][3:5]) for i in current_list],
                        c=colors[a], label=["gogd", "depleting", "timeout",
                                            "bogd", "bobg", "gobd", "extra"][a], 
-                                           marker="|", zorder=3)
+                                           marker="|", s=10, zorder=3)
         else:
             pass
     if REMAINING_REWARDS:
