@@ -998,6 +998,7 @@ def figure_qturns(speed, angular_speed, list_quarter_turn, time_average, animalf
                 animalfolder, session, 'cw_ccw_speeds.pkl')
 
     for col, direction in enumerate(["CW" , "CCW"]):
+
         ##########################
         #Plot angular speed distribution
         if len([clock_angular_speed, anti_angular_speed][col]) != 0:
@@ -1016,7 +1017,8 @@ def figure_qturns(speed, angular_speed, list_quarter_turn, time_average, animalf
         ################################
         #Plot speed distribution
         if len([clock_speed, anti_clock_speed][col])!= 0:
-            axs[1, col].hist([clock_speed, anti_clock_speed][col], bins=np.arange(0, 60, 1), density=True)
+            axs[1, col].hist([clock_speed, anti_clock_speed][col],
+                             bins=np.arange(0, 60, 1), density=True)
         else:
             axs[1, col].hist([0], bins=np.arange(0, 60, 1), density=True)
         axs[1, col].set_xlabel(f"Speed {direction} (cm/s)")
@@ -1030,8 +1032,9 @@ def figure_qturns(speed, angular_speed, list_quarter_turn, time_average, animalf
                              speed[u[0]:u[1]+1], lw=0.5, c="dimgray")
 
         if len([clock_turn, anti_clock_turn][col]) != 0:
-            xmed, ymed = compute_median_trajectory([speed[u[0]:u[1]+1] for u in [clock_turn, anti_clock_turn][col]],
-                                                   [time_average[u[0]:u[1]+1] for u in [clock_turn, anti_clock_turn][col]])
+            xmed, ymed = compute_median_trajectory(
+                [speed[u[0]:u[1]+1] for u in [clock_turn, anti_clock_turn][col]],
+                [time_average[u[0]:u[1]+1] for u in [clock_turn, anti_clock_turn][col]])
             axs[2, col].plot(xmed, ymed, c='crimson')
         axs[2, col].set_ylabel(f"{direction} QT speed (cm/s)")
         axs[2, col].set_xlabel("time (s)")
@@ -1039,7 +1042,7 @@ def figure_qturns(speed, angular_speed, list_quarter_turn, time_average, animalf
         axs[2, col].set_ylim(0, 60)
 
         #################################
-        #plot the individual profile of the direction changes of every quarter turn
+        # Plot the individual profile of the direction changes of every quarter turn
         list_temp_orientation = []
         for u in [clock_turn, anti_clock_turn][col]:
             temp_orientation = angles[u[0]:u[1]+1] - angles[u[0]]
@@ -1051,11 +1054,12 @@ def figure_qturns(speed, angular_speed, list_quarter_turn, time_average, animalf
                 elif (temp_orientation[i] - temp_orientation[i-1]) > 200:
                     temp_orientation[i] -= 360
             list_temp_orientation.append(temp_orientation)
-            axs[3, col].plot(time_average[u[0]:u[1]+1] - time_average[u[0]], temp_orientation, lw=0.5, c="dimgray")
+            axs[3, col].plot(time_average[u[0]:u[1]+1] - time_average[u[0]],
+                             temp_orientation, lw=0.5, c="dimgray")
 
         if len([clock_turn, anti_clock_turn][col]) != 0:
             xmed, ymed = compute_median_trajectory(list_temp_orientation,
-                                                   [time_average[u[0]:u[1]+1] for u in [clock_turn, anti_clock_turn][col]])
+                        [time_average[u[0]:u[1]+1] for u in [clock_turn, anti_clock_turn][col]])
             axs[3, col].plot(xmed, ymed, c='crimson')
         axs[3, col].set_ylim(-180, 180)
         axs[3, col].set_xlim(0, 0.7)
@@ -1068,8 +1072,8 @@ def figure_cumul_qturns(list_quarter_turn, rewarded, unrewarded, time_average, a
     else:
         ax1, ax2, = axs
 
-    # compute the cumulative sums in accordance to time
-    clock_turn = [epoch for epoch in list_quarter_turn if epoch[2][1] == "w"] #Divides the quarter turns depending on their direction (CW or CCW)
+    # Compute the cumulative sums in accordance to time
+    clock_turn = [epoch for epoch in list_quarter_turn if epoch[2][1] == "w"]
     anti_clock_turn = [epoch for epoch in list_quarter_turn if epoch[2][1] == "k"]
     clockcum = np.cumsum([1 if  indice in [u[0] for u in clock_turn] else 0 for indice in range(len(time_average))])
     anticum = np.cumsum([1 if  indice in [u[0] for u in anti_clock_turn] else 0 for indice in range(len(time_average))])
@@ -1077,7 +1081,7 @@ def figure_cumul_qturns(list_quarter_turn, rewarded, unrewarded, time_average, a
     unrewarded_time = np.cumsum([1 if  indice in [u[0] for u in unrewarded] else 0 for indice in range(len(time_average))])
 
     #################################
-    #Plots the cumulative sum of each direction of quarter turn
+    # Plots the cumulative sum of each direction of QT
     ax1.plot(time_average, clockcum, c='#d2725f', label="CW")
     ax1.plot(time_average, anticum, c='#5d93e6', label="CCW")
     ax1.set_ylabel("Cumul # quarter turns")
@@ -1085,7 +1089,7 @@ def figure_cumul_qturns(list_quarter_turn, rewarded, unrewarded, time_average, a
     ax1.legend()
 
     ###################################################
-    # Plot the cumulative number of reward and unrewarded quarter turn
+    # Plots the cumulative number of reward and unrewarded QT
     ax2.plot(time_average, reward_time, c="royalblue", label="Rewarded")
     ax2.plot(time_average, unrewarded_time, c="sandybrown", label="Unrewarded")
     ax2.set_ylabel("Cumul # quarter turns")
@@ -1093,8 +1097,9 @@ def figure_cumul_qturns(list_quarter_turn, rewarded, unrewarded, time_average, a
     ax2.legend()
 
 def plot_angular_speed(angular_speed, list_epochs, ax=None):
+
     #########################################
-    #Plot the angular speed for all movements
+    # Plot the angular speed for all movements
     if ax is None:
         _, ax = plt.subplots(1, 1, figsize=(10, 10))
     angle_speedy = [angular_speed[i] for u in list_epochs for i in range(u[0], u[1]+1)]
@@ -1107,7 +1112,7 @@ def plot_session_trajectory(xpositions, ypositions, ax=None):
 
     RESOLUTION = 512, 512
     distances = np.array([((((xpositions[i]-xpositions[i-1])**2)+((ypositions[i]-ypositions[i-1])**2))**0.5) for i in range(1,len(ypositions))])
-    distances *= (0.84 / RESOLUTION[0]) #convert distance to m with apparatus length = 84 cm
+    distances *= (0.84 / RESOLUTION[0]) # Convert distance to m with apparatus length = 84 cm
     totaldistance = np.sum(distances)
 
     ypositions = RESOLUTION[1] - ypositions
@@ -1123,8 +1128,9 @@ def plot_session_speed(xpositions, ypositions, time, ax=None):
         _, ax = plt.subplots(figsize=(5, 5))
 
     RESOLUTION = 512, 512
-    distances = np.array([((((xpositions[i]-xpositions[i-1])**2)+((ypositions[i]-ypositions[i-1])**2))**0.5) for i in range(1,len(ypositions))])
-    distances *= (0.84 / RESOLUTION[0]) #convert distance to m with apparatus length = 84 cm
+    distances = np.array([((((xpositions[i]-xpositions[i-1])**2)+(
+        (ypositions[i]-ypositions[i-1])**2))**0.5) for i in range(1,len(ypositions))])
+    distances *= (0.84 / RESOLUTION[0]) # Convert distance to m with apparatus length = 84 cm
 
     ypositions = RESOLUTION[1] - ypositions
     timebeweenframe = np.diff(time)
@@ -1134,17 +1140,19 @@ def plot_session_speed(xpositions, ypositions, time, ax=None):
                                         density=True, facecolor='k', alpha=0.75)
     bincenters = 0.5 * (binedges[1:] + binedges[:-1])
 
-    cruisespeedbinsindexes = np.where(bincenters > 10) #10cm/s is the arbitrary limit between immobility and running
+    # 10cm/s is the arbitrary limit between immobility and running
+    cruisespeedbinsindexes = np.where(bincenters > 10)
     cruiseSpeedBinValues = np.take(bincenters, cruisespeedbinsindexes)
     cruiseSpeedBinsNevent = np.take(nEvent, cruisespeedbinsindexes)
-    meanCruiseSpeed = np.sum(np.multiply(cruiseSpeedBinValues, cruiseSpeedBinsNevent)) / np.sum(cruiseSpeedBinsNevent)
+    meanCruiseSpeed = np.sum(np.multiply(cruiseSpeedBinValues, 
+                                         cruiseSpeedBinsNevent)) / np.sum(cruiseSpeedBinsNevent)
 
     immobilitybinsindexes = np.where(bincenters < 10)
     ratioRunvsImmob = np.divide(np.sum(np.take(nEvent, cruisespeedbinsindexes)),
                                 np.sum(np.take(nEvent, immobilitybinsindexes)))
 
-    ax.set_title(f'Avg cruise speed={meanCruiseSpeed:.2f} cm/s \nRun/Immo ratio={ratioRunvsImmob:.2f}')
-    #axs[1].spines[['right', 'top']].set_visible(False) #need to comment if there is an error
+    ax.set_title(
+        f'Avg cruise speed={meanCruiseSpeed:.2f} cm/s \nRun/Immo ratio={ratioRunvsImmob:.2f}')
     ax.set_xlabel('Speed (cm/s)')
     ax.set_ylabel('Proba of event')
     ax.set_ylim([0, 0.1])
