@@ -561,31 +561,21 @@ def process_session(mouseFolder_Path, session, process=False):
         
         ############################################
 
-        #Creates pickel for number of rewarded and unrewarded quarters / number of CW and CCW turns
+        #Creates pickle for number of every QT type / number of CW and CCW turns
 
-        reward_number=len(rewarded)
-        unreward_number=len(unrewarded)
-        extra_number=len(extra)
-        bad_direction_number = len(bad_direction)
-        bad_object_number = len(bad_object)
-        bad_objectdirection_number = len(bad_object_direction)
-        depleting_number = len(depleting)
-        timeout_number = len(timeout)
-        anti_clock_number = len(anti_clock_turn)
-        clock_number = len(clock_turn)
+        nb_types_qt = {
+            'reward_number' : len(rewarded), 'unreward_number' : len(unrewarded), 'extra_number' : len(extra), 'bad_direction_number' : len(bad_direction),
+            'bad_object_number' : len(bad_object), 'bad_objectdirection_number' : len(bad_object_direction), 'depleting_number' : len(depleting),
+            'timeout_number' : len(timeout), 'anti_clock_number' : len(anti_clock_turn), 'clock_number' : len(clock_turn)
+            }
 
-        filename = mouseFolder_Path + '/' + session + '/' + 'pickle_total_QT_types.pkl'
+        pickle_data(data=nb_types_qt, animal_folder = mouseFolder_Path, session=session,
+                     filename = 'total_nb_QT_types.pkl')
+
+        nb_qt_cw_ccw = { 'CW_turn' : len(clock_turn), 'CCW_turn' : len(anti_clock_turn) }
     
-        pickle_data(data=(reward_number,unreward_number,extra_number,bad_direction_number,bad_object_number,
-                     bad_objectdirection_number,depleting_number,timeout_number,clock_number,anti_clock_number), 
-                     path = mouseFolder_Path + os.sep + session + os.sep + session + os.sep + 'Pickles_datas/',
-                     filename = 'pickle_total_QT_types.pkl')
-
-        CW_turn=len(clock_turn)
-        CCW_turn=len(anti_clock_turn)
-        filename2 = mouseFolder_Path + '/' + session + '/' + 'pickle_total_CW_CCW.pkl'
-    
-        pickle.dump((CW_turn, CCW_turn), open(filename2, 'wb'))
+        pickle_data(data=nb_qt_cw_ccw, animal_folder = mouseFolder_Path, session=session,
+                    filename = 'total_nb_CW_CCW.pkl')
 
         ######################################################
         # Figure creation  ~10sec
@@ -714,7 +704,7 @@ def load_data(mouseFolder_Path, session):
 
     return traj_df, turns_df, param_df
 
-def pickle_data(data, animal_folder: str, filename: str) -> None:
+def pickle_data(data : Any, animal_folder: Any, session, filename: str) -> None:
     """
     Pickle data and register in a specific folder with a specific name. 
 
@@ -723,31 +713,30 @@ def pickle_data(data, animal_folder: str, filename: str) -> None:
     - animal_folder (str): path to the animal folder.
     - filename (str): name of file where data are registered.
     """
-    try: 
-        # Define 'Pickle_data' folder path inside the animal folder
+    try:
+        # Define 'Pickle_data' folder path inside the animal and session folders
         pickle_folder = 'Pickle_data'
-        target_dir = os.path.join(animal_folder, pickle_folder)
-        
+        session_folder_path = animal_folder + os.sep + session 
+        target_dir = os.path.join(session_folder_path, pickle_folder)
+
         # Check if 'Pickle_data' folder already exists, if not then create it
         if not os.path.exists(target_dir):
             os.makedirs(target_dir)
-            #print(f"Folder {target_dir} created.")
-        #else:
-            #print(f"Folder {target_dir} already exists.")
-        
+
         # Create the full path of file inside 'Pickle_data' folder
         full_path = os.path.join(target_dir, filename)
-        
+
         # Write data in the file
         with open(full_path, 'wb') as file:
             pickle.dump(data, file)
-        #print(f"Data serialized and saved in {full_path}")
-    
+        #print(f"Data pickled and saved in {full_path}")
+        return None
+
     except Exception as e:
         print(f"An error occurred while unpickling data: {e}")
         return None
 
-def unpickle_data(path : str, filename : str) :
+def unpickle_data(path : Any, filename : str) -> Any :
     """
     Unpickles data from a specified path and filename
 
@@ -761,7 +750,7 @@ def unpickle_data(path : str, filename : str) :
     try:
         # Create the full file path
         full_path = os.path.join(path, filename)
-        
+
         # Read the data from the file
         with open(full_path, 'rb') as file:
             data = pickle.load(file)
