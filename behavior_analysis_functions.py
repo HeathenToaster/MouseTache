@@ -971,7 +971,7 @@ def figure_stops(traj_df, current_movement, xgauss, ygauss, time_average, stops_
     ax3.set_xlabel("Stops duration after \nunrewarded turn (s)")
 
     # ############################################
-    # # plot the time of stops after all quarter turn
+    # Plot the time of stops after all quarter turn
     variable = [time_average[u[1]] - time_average[u[0]] for u in stops_type["unrewarded"]] + [time_average[u[1]] - time_average[u[0]]  for u in stops_type["rewarded"]]
     if len(variable) != 0:
         ax4.hist(variable, bins=np.arange(0, 2, 0.05))
@@ -1000,7 +1000,7 @@ def figure_qturns(speed, angular_speed, list_quarter_turn, time_average, animalf
     for col, direction in enumerate(["CW" , "CCW"]):
 
         ##########################
-        #Plot angular speed distribution
+        # Plot angular speed distribution
         if len([clock_angular_speed, anti_angular_speed][col]) != 0:
             axs[0, col].hist([clock_angular_speed, anti_angular_speed][col],
                              bins=np.arange(-50, 50, .5), density=True)
@@ -1015,7 +1015,7 @@ def figure_qturns(speed, angular_speed, list_quarter_turn, time_average, animalf
         axs[0, col].axvline(0, c='k', lw=0.5)
 
         ################################
-        #Plot speed distribution
+        # Plot speed distribution
         if len([clock_speed, anti_clock_speed][col])!= 0:
             axs[1, col].hist([clock_speed, anti_clock_speed][col],
                              bins=np.arange(0, 60, 1), density=True)
@@ -1026,7 +1026,7 @@ def figure_qturns(speed, angular_speed, list_quarter_turn, time_average, animalf
         axs[1, col].axvline(TRUE_CUT_SPEED, c='red', lw=0.5)
 
         #################################
-        #plot the indidual speed profile of every quarter turn
+        # Plot the indidual speed profile of every quarter turn
         for u in [clock_turn, anti_clock_turn][col]:
             axs[2, col].plot(time_average[u[0]:u[1]+1] - time_average[u[0]],
                              speed[u[0]:u[1]+1], lw=0.5, c="dimgray")
@@ -1040,6 +1040,10 @@ def figure_qturns(speed, angular_speed, list_quarter_turn, time_average, animalf
         axs[2, col].set_xlabel("time (s)")
         axs[2, col].set_xlim(0, 0.7)
         axs[2, col].set_ylim(0, 60)
+
+        # Save this as pickle
+        pickle_data((xmed,ymed), animalfolder, session,
+                    'speed_profile_qt.pkl')
 
         #################################
         # Plot the individual profile of the direction changes of every quarter turn
