@@ -345,7 +345,7 @@ def analysis_trajectory(time, xgauss, ygauss,
 
     #Advance analysis = identify the quarter turns, the trajectory towards and between objetcs
     #format of a quarter turn indicator: [0] = 'Q' for quarter turn     [1] = 'k'/'w' for counterclockwise / clockwise
-    # [2] = 'O'/'E'/'B'/'G'/'H' for wrong object /extra turn / bad direction / Good / double wrong        
+    # [2] = 'O'/'E'/'B'/'G'/'H' for wrong object /extra turn / bad direction / Good / double wrong   
     # [3-4] = patch
 
     #format for between objects indicator: [0] = 'B' for between object    [1 - 2] = previous patch    [3-4] = current patch
@@ -1149,23 +1149,23 @@ def plot_session_speed(xpositions, ypositions, time, ax=None):
     timebeweenframe = np.diff(time)
     speeds = np.divide(distances, timebeweenframe)
 
-    nEvent, binedges, patches = ax.hist(speeds*100, bins=np.arange(0, 100, 100/25),
+    n_event, binedges, patches = ax.hist(speeds*100, bins=np.arange(0, 100, 100/25),
                                         density=True, facecolor='k', alpha=0.75)
     bincenters = 0.5 * (binedges[1:] + binedges[:-1])
 
     # 10cm/s is the arbitrary limit between immobility and running
     cruisespeedbinsindexes = np.where(bincenters > 10)
-    cruiseSpeedBinValues = np.take(bincenters, cruisespeedbinsindexes)
-    cruiseSpeedBinsNevent = np.take(nEvent, cruisespeedbinsindexes)
-    meanCruiseSpeed = np.sum(np.multiply(cruiseSpeedBinValues, 
-                                         cruiseSpeedBinsNevent)) / np.sum(cruiseSpeedBinsNevent)
+    cruise_speed_bin_values = np.take(bincenters, cruisespeedbinsindexes)
+    cruise_speed_bin_nevent = np.take(n_event, cruisespeedbinsindexes)
+    mean_cruise_speed = np.sum(np.multiply(cruise_speed_bin_values, 
+                                         cruise_speed_bin_nevent)) / np.sum(cruise_speed_bin_nevent)
 
     immobilitybinsindexes = np.where(bincenters < 10)
-    ratioRunvsImmob = np.divide(np.sum(np.take(nEvent, cruisespeedbinsindexes)),
-                                np.sum(np.take(nEvent, immobilitybinsindexes)))
+    ratio_run_immo = np.divide(np.sum(np.take(n_event, cruisespeedbinsindexes)),
+                                np.sum(np.take(n_event, immobilitybinsindexes)))
 
     ax.set_title(
-        f'Avg cruise speed={meanCruiseSpeed:.2f} cm/s \nRun/Immo ratio={ratioRunvsImmob:.2f}')
+        f'Avg cruise speed={mean_cruise_speed:.2f} cm/s \nRun/Immo ratio={ratio_run_immo:.2f}')
     ax.set_xlabel('Speed (cm/s)')
     ax.set_ylabel('Proba of event')
     ax.set_ylim([0, 0.1])
@@ -1182,9 +1182,6 @@ def figure_qt_number(traj_df, ax=None):
     n, bins, patches = ax.hist(allturns_time, bins, density=False,
                                histtype='step', cumulative=True, label='trapeze changes',
                                color=turnPalette['all turns'])
-    #ax.plot(bins[:-1],n,label='all turns',color=turnPalette['all turns'][0],linestyle=turnPalette['all turns'][1])
-    #turn_times=traj_df.loc[traj_df['Rewarded']]
-    #if len(turn_times) == 0:
     turn_times = traj_df.loc[(traj_df['typeOfTurn'] == "gogt") | (traj_df['typeOfTurn'] == "gogd")]
     turn_times=turn_times['time'].to_numpy()
     n, bins, patches = ax.hist(turn_times, bins, density=False, histtype='step',
@@ -1201,7 +1198,8 @@ def list_sessions_analyzed(file):
     else:
         with open(file, "r", encoding="utf-8") as f:
             list_session = f.readlines()
-            list_session_analyzed = [session[0:-1] if session[-1]=="\n" else session for session in list_session]
+            list_session_analyzed = [session[0:-1] if session[-1]=="\n" 
+                                     else session for session in list_session]
     return list_session_analyzed
 
 def figure_title(session, phase, direction, cno):
@@ -1212,11 +1210,14 @@ def figure_title(session, phase, direction, cno):
 def get_phase_direction_cno(param_df):
     try:
         if not param_df.loc[param_df.index[0], "allowRewardDelivery"]:
-            phase = 0  # if no reward can be given, then it's the free exploration
+            # if no reward can be given, then it's the free exploration
+            phase = 0
         elif param_df.loc[param_df.index[0], "number_of_alternativeObject"] == 1:
-            phase = 4  # if only one alternative is available for the objects at a given time in the session, it's session 4
+            # if only one alternative is available for the objects at a given time, it's phase 4
+            phase = 4
         elif param_df.loc[param_df.index[0], "number_of_alternativeObject"] == 3:
-            phase = 3  # then it's phase 3
+            # then it's phase 3
+            phase = 3
         elif param_df.loc[param_df.index[0], "potentialRewardedDirections"] == '[90, 270]':
             phase = 1
         else:
@@ -1252,12 +1253,14 @@ def html_mouse(root, mousename, name_of_figure="Figure.png"):
         f.write(bottom)
 
 
-##########################################################################################################################################
+#################################################
 # Median run computation
-# Modified from: Averaging GPS segments competition 2019. https://doi.org/10.1016/j.patcog.2020.107730
-#                T. Karasek, "SEGPUB.IPYNB", Github 2019. https://gist.github.com/t0mk/eb640963d7d64e14d69016e5a3e93fd6
+# Modified from: Averaging GPS segments competition 2019.
+#                    https://doi.org/10.1016/j.patcog.2020.107730
+#                T. Karasek, "SEGPUB.IPYNB", Github 2019.
+#                    https://gist.github.com/t0mk/eb640963d7d64e14d69016e5a3e93fd6
 # # # should be able to squeeze SEM in SampleSet class
-##########################################################################################################################################
+#################################################
 
 def median(lst):
     sortedLst = sorted(lst)
@@ -1303,7 +1306,8 @@ def point_line_distance(point, start, end):
     if start == end:
         return distance(point, start)
     else:
-        n = abs((end[0] - start[0]) * (start[1] - point[1]) - (start[0] - point[0]) * (end[1] - start[1]))
+        n = abs((end[0] - start[0]) * (start[1] - point[1]) -
+                (start[0] - point[0]) * (end[1] - start[1]))
         d = np.sqrt((end[0] - start[0]) ** 2 + (end[1] - start[1]) ** 2)
         return n / d
 
@@ -1332,11 +1336,11 @@ class SampleSet:
             xm.append(xs)
             ym.append(ys)
         xp, yp = np.median(xm, axis=0), np.median(ym, axis=0)
-        #xp, yp = np.mean(xm, axis=0), np.mean(ym, axis=0)
         return xp, yp
 
     def endpoints(self):
-        cs = np.array([[self.trajs[0].xs[0],self.trajs[0].xs[-1]], [self.trajs[0].ys[0],self.trajs[0].ys[-1]]])
+        cs = np.array([[self.trajs[0].xs[0],self.trajs[0].xs[-1]],
+                       [self.trajs[0].ys[0],self.trajs[0].ys[-1]]])
         xs = np.hstack([t.xs[0] for t in self.trajs] + [t.xs[-1] for t in self.trajs])
         ys = np.hstack([t.ys[0] for t in self.trajs] + [t.ys[-1] for t in self.trajs])
         clabs = []
@@ -1346,8 +1350,6 @@ class SampleSet:
                 ap = np.array([[xs[i]],[ys[i]]])
                 dists = np.linalg.norm(ap - cs, axis=0)
                 clabs.append(np.argmin(dists))
-            #cx = np.array([np.mean(xs[np.where(np.array(clabs)==0)]), np.mean(xs[np.where(np.array(clabs)==1)])])
-            #cy = np.array([np.mean(ys[np.where(np.array(clabs)==0)]), np.mean(ys[np.where(np.array(clabs)==1)])])
             if oldclabs == clabs:
                 break
             oldclabs = clabs
@@ -1394,10 +1396,10 @@ class SampleSet:
             xm.append(xs)
             ym.append(ys)
         if stat == "Med.":
-            self.xp, self.yp = zip(*rdp(list(zip(np.median(xm, axis=0),np.median(ym, axis=0))), eps))
+            self.xp, self.yp = zip(*rdp(list(zip(np.median(xm, axis=0),
+                                                 np.median(ym, axis=0))), eps))
         elif stat == "Avg.":
             self.xp, self.yp = zip(*rdp(list(zip(np.mean(xm, axis=0),np.mean(ym, axis=0))), eps))
-        #self.xp, self.yp = np.mean(xm, axis=0), np.mean(ym, axis=0)
         xp, yp = self.xp,self.yp
         return xp, yp
 
@@ -1454,7 +1456,9 @@ def compute_median_trajectory(posdataRight, timedataRight, stat='Med.'):
     ss.getAvg(zmax, lenlim, eps, stat) # not supposed to do anything but has to be here to work ??????? Therefore, no touchy.
     X, Y = ss.getAvg(zmax, lenlim, eps, stat)
 
-    # Here median computation warps time (~Dynamic Time Warping) so interpolate to get back to 0.04s increments.
-    interpTime = np.linspace(X[0], X[-1], int(X[-1]/0.04)+1) # create time from 0 to median arrival time, evenly spaced 0.04s
+    # Here median computation warps time (~Dynamic Time Warping)
+    # so interpolate to get back to 0.04s increments.
+    interpTime = np.linspace(X[0], X[-1],
+                int(X[-1]/0.04)+1) # create time from 0 to median arrival time, evenly spaced 0.04s
     interpPos = np.interp(interpTime, X, Y) # interpolate the position at interpTime
     return interpTime, interpPos
