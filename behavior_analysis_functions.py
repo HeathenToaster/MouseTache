@@ -723,25 +723,29 @@ def pickle_data(data, animal_folder: str, filename: str) -> None:
     - animal_folder (str): path to the animal folder.
     - filename (str): name of file where data are registered.
     """
-    # Define 'Pickle_data' folder path inside the animal folder
-    pickle_folder = 'Pickle_data'
-    target_dir = os.path.join(animal_folder, pickle_folder)
+    try: 
+        # Define 'Pickle_data' folder path inside the animal folder
+        pickle_folder = 'Pickle_data'
+        target_dir = os.path.join(animal_folder, pickle_folder)
         
-    # Check if 'Pickle_data' folder already exists, if not then create it
-    if not os.path.exists(target_dir):
-        os.makedirs(target_dir)
-        #print(f"Folder {target_dir} created.")
-    #else:
-        #print(f"Folder {target_dir} already exists.")
+        # Check if 'Pickle_data' folder already exists, if not then create it
+        if not os.path.exists(target_dir):
+            os.makedirs(target_dir)
+            #print(f"Folder {target_dir} created.")
+        #else:
+            #print(f"Folder {target_dir} already exists.")
         
-    # Create the full path of file inside 'Pickle_data' folder
-    full_path = os.path.join(target_dir, filename)
+        # Create the full path of file inside 'Pickle_data' folder
+        full_path = os.path.join(target_dir, filename)
         
-    # Write data in the file
-    with open(full_path, 'wb') as file:
-        pickle.dump(data, file)
-        
-    #print(f"Data serialized and saved in {full_path}")
+        # Write data in the file
+        with open(full_path, 'wb') as file:
+            pickle.dump(data, file)
+        #print(f"Data serialized and saved in {full_path}")
+    
+    except Exception as e:
+        print(f"An error occurred while unpickling data: {e}")
+        return None
 
 def unpickle_data(path : str, filename : str) :
     """
