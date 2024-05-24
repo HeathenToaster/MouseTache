@@ -658,7 +658,8 @@ def process_session(mouseFolder_Path, session, process=False):
         # row 2:5, cols 6:7  ~4sec
         ___axs = [ax_speed_cw, ax_speed_ccw, ax_angular_speed_cw, ax_angular_speed_ccw,
                 ax_speed_profile_cw, ax_speed_profile_ccw, ax_angular_speed_profile_cw, ax_angular_speed_profile_ccw]
-        figure_qturns(speed, angular_speed, list_quarter_turn, time_average, angles, axs=___axs)
+        figure_qturns(speed, angular_speed, list_quarter_turn, time_average, 
+                      mouseFolder_Path, session, angles, axs=___axs)
 
         # row 5, col 6:7  ~1sec
         figure_cumul_qturns(list_quarter_turn, rewarded, unrewarded, time_average, axs=[ax_cumu_qt, ax_rewarded_qt])
@@ -978,7 +979,7 @@ def figure_stops(traj_df, current_movement, xgauss, ygauss, time_average, stops_
         ax4.hist([0], bins=np.arange(0, 2, 0.05))
     ax4.set_xlabel("Stops duration (s)")
 
-def figure_qturns(speed, angular_speed, list_quarter_turn, time_average, angles, axs=None):
+def figure_qturns(speed, angular_speed, list_quarter_turn, time_average, animalfolder, session, angles, axs=None):
     if axs is None:
         _, axs = plt.subplots(4, 2, figsize=(10, 40))
     axs = np.array(axs).reshape(4, 2)
@@ -989,6 +990,11 @@ def figure_qturns(speed, angular_speed, list_quarter_turn, time_average, angles,
     anti_angular_speed = [angular_speed[i] for u in anti_clock_turn for i in range(u[0], u[1] + 1)]
     clock_speed = [speed[i] for u in clock_turn for i in range(u[0], u[1] + 1)]
     anti_clock_speed = [speed[i] for u in anti_clock_turn for i in range(u[0], u[1] + 1)]
+
+    # Create and save pickles 
+
+    pickle_data((clock_angular_speed,anti_angular_speed,clock_speed,anti_clock_speed), animalfolder, session
+                     filename = 'total_nb_QT_types.pkl')
 
     for col, direction in enumerate(["CW" , "CCW"]):
         ##########################
