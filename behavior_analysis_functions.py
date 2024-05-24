@@ -662,7 +662,8 @@ def process_session(mouseFolder_Path, session, process=False):
                       mouseFolder_Path, session, angles, axs=___axs)
 
         # row 5, col 6:7  ~1sec
-        figure_cumul_qturns(list_quarter_turn, rewarded, unrewarded, time_average, axs=[ax_cumu_qt, ax_rewarded_qt])
+        figure_cumul_qturns(list_quarter_turn, rewarded, unrewarded, time_average, 
+                            mouseFolder_Path, session, axs=[ax_cumu_qt, ax_rewarded_qt])
 
         # row 6  ~1sec
         figure_coloreddot(turns_df, time, list_epochs, list_quarter_turn, time_average, list_between_objects, ax=ax_colored_dot)
@@ -1046,7 +1047,7 @@ def figure_qturns(speed, angular_speed, list_quarter_turn, time_average, animalf
                     'speed_profile_qt.pkl')
 
         #################################
-        # Plot the individual profile of the direction changes of every quarter turn
+        # Plot the individual profile of the direction changes of every QT
         list_temp_orientation = []
         for u in [clock_turn, anti_clock_turn][col]:
             temp_orientation = angles[u[0]:u[1]+1] - angles[u[0]]
@@ -1070,7 +1071,7 @@ def figure_qturns(speed, angular_speed, list_quarter_turn, time_average, animalf
         axs[3, col].set_ylabel(f"{direction} QT angular speed (deg/s)")
         axs[3, col].set_xlabel("time in s")
 
-def figure_cumul_qturns(list_quarter_turn, rewarded, unrewarded, time_average, axs=None):
+def figure_cumul_qturns(list_quarter_turn, rewarded, unrewarded, time_average, animalfolder, session, axs=None):
     if axs is None:
         _, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 10))
     else:
@@ -1083,6 +1084,14 @@ def figure_cumul_qturns(list_quarter_turn, rewarded, unrewarded, time_average, a
     anticum = np.cumsum([1 if  indice in [u[0] for u in anti_clock_turn] else 0 for indice in range(len(time_average))])
     reward_time = np.cumsum([1 if  indice in [u[0] for u in rewarded] else 0 for indice in range(len(time_average))])
     unrewarded_time = np.cumsum([1 if  indice in [u[0] for u in unrewarded] else 0 for indice in range(len(time_average))])
+
+    # Pickle datas
+
+    pickle_data((clockcum,anticum),animalfolder, session,
+                'cw_ccw_cumul.pkl')
+    
+    pickle_data((reward_time,unrewarded_time), animalfolder, session,
+                'rewards_cumul.pkl')
 
     #################################
     # Plots the cumulative sum of each direction of QT
