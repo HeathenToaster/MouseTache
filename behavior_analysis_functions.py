@@ -984,23 +984,25 @@ def figure_qturns(speed, angular_speed, list_quarter_turn, time_average, animalf
         _, axs = plt.subplots(4, 2, figsize=(10, 40))
     axs = np.array(axs).reshape(4, 2)
 
-    clock_turn = [epoch for epoch in list_quarter_turn if epoch[2][1] == "w"] #Divides the quarter turns depending on their direction (CW or CCW)
+    # Divides the quarter turns depending on their direction (CW or CCW)
+    clock_turn = [epoch for epoch in list_quarter_turn if epoch[2][1] == "w"]
     anti_clock_turn = [epoch for epoch in list_quarter_turn if epoch[2][1] == "k"]
     clock_angular_speed = [angular_speed[i] for u in clock_turn for i in range(u[0], u[1] + 1) ]
     anti_angular_speed = [angular_speed[i] for u in anti_clock_turn for i in range(u[0], u[1] + 1)]
     clock_speed = [speed[i] for u in clock_turn for i in range(u[0], u[1] + 1)]
     anti_clock_speed = [speed[i] for u in anti_clock_turn for i in range(u[0], u[1] + 1)]
 
-    # Create and save pickles 
+    # Create and save pickles
 
-    pickle_data((clock_angular_speed,anti_angular_speed,clock_speed,anti_clock_speed), animalfolder, session
-                     filename = 'total_nb_QT_types.pkl')
+    pickle_data((clock_angular_speed,anti_angular_speed,clock_speed,anti_clock_speed),
+                animalfolder, session, 'cw_ccw_speeds.pkl')
 
     for col, direction in enumerate(["CW" , "CCW"]):
         ##########################
         #Plot angular speed distribution
         if len([clock_angular_speed, anti_angular_speed][col]) != 0:
-            axs[0, col].hist([clock_angular_speed, anti_angular_speed][col], bins=np.arange(-50, 50, .5), density=True)
+            axs[0, col].hist([clock_angular_speed, anti_angular_speed][col],
+                             bins=np.arange(-50, 50, .5), density=True)
         else:
             axs[0, col].hist([0], bins=np.arange(-50, 50, .5), density=True)
         axs[0, col].set_xlabel(f"Angular speed {direction} (degree/s)")
