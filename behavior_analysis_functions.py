@@ -9,11 +9,13 @@ are also some bad practices in the code that should be fixed.
 """
 
 import os
+import pickle
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from scipy.ndimage import gaussian_filter as smooth
 from matplotlib.patches import Polygon
+from typing import Any
 plt.style.use('./paper.mplstyle')
 
 ######################################
@@ -343,8 +345,8 @@ def analysis_trajectory(time, xgauss, ygauss,
     # Calcul of acceleration
     acceleration = np.insert(np.diff([speeds_gauss, time_average])[0], obj = 0, values= np.zeros(1)) # Derive speed relative to time
 
-    # Advance analysis = identify the quarter turns, the trajectory towards and between objetcs
-    # Format of a quarter turn indicator: [0] = 'Q' for quarter turn     [1] = 'k'/'w' for counterclockwise / clockwise
+    #Advance analysis = identify the quarter turns, the trajectory towards and between objetcs
+    #format of a quarter turn indicator: [0] = 'Q' for quarter turn     [1] = 'k'/'w' for counterclockwise / clockwise
     # [2] = 'O'/'E'/'B'/'G'/'H' for wrong object /extra turn / bad direction / Good / double wrong        
     # [3-4] = patch
 
@@ -539,8 +541,8 @@ def process_session(mouseFolder_Path, session, process=False):
         depleting = [epoch for epoch in list_quarter_turn if epoch[2][2] == 'D'] # Added
         timeout = [epoch for epoch in list_quarter_turn if epoch[2][2] == 'T'] # Added
 
-        # between_reward = [epoch for epoch in list_between_objects if epoch[2][5] == 'r']
-        # between_unrewarded = [epoch for epoch in list_between_objects if epoch[2][5] == 'n']
+        #between_reward = [epoch for epoch in list_between_objects if epoch[2][5] == 'r'] # Was commented
+        #between_unrewarded = [epoch for epoch in list_between_objects if epoch[2][5] == 'n'] # Was commented
 
         anti_clock_turn = [epoch for epoch in list_quarter_turn if epoch[2][1] == "k"]
         clock_turn = [epoch for epoch in list_quarter_turn if epoch[2][1] == "w"]
@@ -548,10 +550,28 @@ def process_session(mouseFolder_Path, session, process=False):
 
         when_reward = [[turns_df.loc[a, "time"], turns_df.loc[a, "currentPatch"]] for a in turns_df.index if turns_df.loc[a, "Rewarded"]]
         when_no_reward = [[turns_df.loc[a, "time"], turns_df.loc[a, "currentPatch"]] for a in turns_df.index if not turns_df.loc[a, "Rewarded"]]
+        
+        ############################################
+
+        #Creates pickle for number of every QT type / number of CW and CCW turns
+
+        nb_types_qt = {
+            'reward_number' : len(rewarded), 'unreward_number' : len(unrewarded), 'extra_number' : len(extra), 'bad_direction_number' : len(bad_direction),
+            'bad_object_number' : len(bad_object), 'bad_objectdirection_number' : len(bad_object_direction), 'depleting_number' : len(depleting),
+            'timeout_number' : len(timeout), 'anti_clock_number' : len(anti_clock_turn), 'clock_number' : len(clock_turn)
+            }
+
+        pickle_data(data=nb_types_qt, animal_folder = mouseFolder_Path, session=session,
+                     filename = 'total_nb_QT_types.pkl')
+
+        nb_qt_cw_ccw = { 'CW_turn' : len(clock_turn), 'CCW_turn' : len(anti_clock_turn) }
+    
+        pickle_data(data=nb_qt_cw_ccw, animal_folder = mouseFolder_Path, session=session,
+                    filename = 'total_nb_CW_CCW.pkl')
 
         ######################################################
         # Figure creation  ~10sec
-        summary_fig = plt.figure(figsize=(14, 12), constrained_layout=True, facecolor='w', dpi=180)
+        summary_fig = plt.figure(figsize=(14, 12), constrained_layout=True, facecolor='w', dpi=150)
         gs = summary_fig.add_gridspec(6, 8, height_ratios=[1, 1, 1, 1, 1, 1], #hspace=0.5,
                                     width_ratios=[1, 1, 1, 1, 1, .1, 1, 1],# wspace=0.5
                                     )  # 6 rows, 8 columns
@@ -630,10 +650,12 @@ def process_session(mouseFolder_Path, session, process=False):
         # row 2:5, cols 6:7  ~4sec
         ___axs = [ax_speed_cw, ax_speed_ccw, ax_angular_speed_cw, ax_angular_speed_ccw,
                 ax_speed_profile_cw, ax_speed_profile_ccw, ax_angular_speed_profile_cw, ax_angular_speed_profile_ccw]
-        figure_qturns(speed, angular_speed, list_quarter_turn, time_average, angles, axs=___axs)
+        figure_qturns(speed, angular_speed, list_quarter_turn, time_average, 
+                      mouseFolder_Path, session, angles, axs=___axs)
 
         # row 5, col 6:7  ~1sec
-        figure_cumul_qturns(list_quarter_turn, rewarded, unrewarded, time_average, axs=[ax_cumu_qt, ax_rewarded_qt])
+        figure_cumul_qturns(list_quarter_turn, rewarded, unrewarded, time_average, 
+                            mouseFolder_Path, session, axs=[ax_cumu_qt, ax_rewarded_qt])
 
         # row 6  ~1sec
         figure_coloreddot(turns_df, time, list_epochs, list_quarter_turn, time_average, list_between_objects, ax=ax_colored_dot)
@@ -670,11 +692,67 @@ def load_data(mouseFolder_Path, session):
         for i in range(turns_df.index.values[-1]):  # if there is a missing value for ongoingRewardedObject, replace it with either SW or SE, as long as it's not the one where the mouse is
             if type(turns_df['ongoingRewardedObject'][i]) == float:
                 turns_df.iat[i, 8] = str([turns_df.iat[i, 4]])
-        turns_df = turns_df.loc[turns_df['time'] > 15]  # FIXME: il y a des artefacts sur les premieres secondes de videos, donc il faut les supprimer
+        turns_df = turns_df.loc[turns_df['time'] > 15]  #FIXME: il y a des artefacts sur les premieres secondes de videos, donc il faut les supprimer
     except FileNotFoundError:
         print("File turnsinfo not found")
 
     return traj_df, turns_df, param_df
+
+def pickle_data(data : Any, animal_folder: Any, session, filename: str) -> None:
+    """
+    Pickle data and register in a specific folder with a specific name. 
+
+    Parameters :
+    - data (any serializable object): data to serialize.
+    - animal_folder (str): path to the animal folder.
+    - filename (str): name of file where data are registered.
+    """
+    try:
+        # Define 'Pickle_data' folder path inside the animal and session folders
+        pickle_folder = 'Pickle_data'
+        session_folder_path = animal_folder + os.sep + session 
+        target_dir = os.path.join(session_folder_path, pickle_folder)
+
+        # Check if 'Pickle_data' folder already exists, if not then create it
+        if not os.path.exists(target_dir):
+            os.makedirs(target_dir)
+
+        # Create the full path of file inside 'Pickle_data' folder
+        full_path = os.path.join(target_dir, filename)
+
+        # Write data in the file
+        with open(full_path, 'wb') as file:
+            pickle.dump(data, file)
+        #print(f"Data pickled and saved in {full_path}")
+        return None
+
+    except Exception as e:
+        print(f"An error occurred while unpickling data: {e}")
+        return None
+
+def unpickle_data(path : Any, filename : str) -> Any :
+    """
+    Unpickles data from a specified path and filename
+
+    Parameters:
+    - path (str): The directory path where the file is saved.
+    - filename (str): The name of the file to read the data from.
+    
+    Returns:
+    any: The unpickled data.
+    """
+    try:
+        # Create the full file path
+        full_path = os.path.join(path, filename)
+
+        # Read the data from the file
+        with open(full_path, 'rb') as file:
+            data = pickle.load(file)
+        #print(f"Data successfully unpickled from {full_path}")
+        return data
+    except Exception as e:
+        print(f"An error occurred while unpickling data: {e}")
+        return None
 
 def figure_coloreddot(turns_df, time, list_epochs, list_quarter_turn, time_average, list_between_objects, ax=None):
     if ax is None:
@@ -687,39 +765,46 @@ def figure_coloreddot(turns_df, time, list_epochs, list_quarter_turn, time_avera
     when_reward = [[turns_df.loc[a, "time"], turns_df.loc[a, "currentPatch"]] for a in turns_df.index if turns_df.loc[a, "Rewarded"]]
     when_no_reward = [[turns_df.loc[a, "time"], turns_df.loc[a, "currentPatch"]] for a in turns_df.index if not turns_df.loc[a, "Rewarded"]]
 
-    #Creates a list for each type of quarter turn
+    # Creates a list for each type of QT
     rewarded = [epoch for epoch in list_quarter_turn if epoch[2][2] == 'G']
     unrewarded = [epoch for epoch in list_quarter_turn if epoch[2][2] != 'G']
-    extra = [epoch for epoch in list_quarter_turn if epoch[2][2] == 'E']
-    badDirection = [epoch for epoch in list_quarter_turn if epoch[2][2] == 'B']
-    wrongObject = [epoch for epoch in list_quarter_turn if epoch[2][2] == 'O']
-    doubleWrong = [epoch for epoch in list_quarter_turn if epoch[2][2] == 'H']
-    anti_clock_turn = [epoch for epoch in list_quarter_turn if epoch[2][1] == "k"]
-    clock_turn = [epoch for epoch in list_quarter_turn if epoch[2][1] == "w"]
-    exploring = [epoch for epoch in list_quarter_turn if epoch[2][2] == 'X']
+    extra_turn = [epoch for epoch in list_quarter_turn if epoch[2][2] == 'E']
+    bad_direction = [epoch for epoch in list_quarter_turn if epoch[2][2] == 'B']
+    bad_object = [epoch for epoch in list_quarter_turn if epoch[2][2] == 'O']
+    bad_object_direction = [epoch for epoch in list_quarter_turn if epoch[2][2] == 'H']
+    timeout_turn = [epoch for epoch in list_quarter_turn if epoch[2][2] == 'T']
+    depl_turn = [epoch for epoch in list_quarter_turn if epoch[2][2] == 'D']
 
     for epoch in list_epochs:
         if epoch[2][0] == "Q":
-            current_quarter_turn += 1#add the number of the current quarter turn after so it still indicate the last one of the serie when added
-            if epoch[2][2] == 'G': #if there is a good quarter turn, enter or continu a serie
-                if serie == 0: #add the signal at the beginning of the serie
-                    list_number_reward.append([current_quarter_turn, search_right_turn(time_start= time[list_quarter_turn[current_quarter_turn][0]], time_end= time[list_quarter_turn[current_quarter_turn][1]], turns_df = turns_df)])
+            # add nb of the current QT after so it still indicate the last one of the serie when added
+            current_quarter_turn += 1
+            # if there is a good QT, enter or continue a serie
+            if epoch[2][2] == 'G':
+                # Add the signal at the beginning of the serie
+                if serie == 0:
+                    list_number_reward.append([current_quarter_turn,
+                    search_right_turn(time_start= time[list_quarter_turn[current_quarter_turn][0]],
+                    time_end= time[list_quarter_turn[current_quarter_turn][1]],
+                    turns_df = turns_df)])
                     serie = 1
-                #serie = 1
-            elif serie == 1: #if the epoch is not a rewarded quarter turn
-                #list_number_reward.append([current_quarter_turn - 1, search_right_turn(time_start= time[list_quarter_turn[current_quarter_turn][0]], time_end= time[list_quarter_turn[current_quarter_turn][1]], turns_df = turns_df)])
+            # if the epoch is not a rewarded QT
+            elif serie == 1:
                 serie = 0
-        elif serie == 1: #if the epoch is not a rewarded quarter turn
-            #list_number_reward.append([current_quarter_turn, search_right_turn(time_start= time[list_quarter_turn[current_quarter_turn][0]], time_end= time[list_quarter_turn[current_quarter_turn][1]], turns_df = turns_df)])
+        # if the epoch is not a rewarded QT
+        elif serie == 1:
             serie = 0
 
     ax.plot([time_average[i[0]] if i[2][0] == "Q"  else time_average[i[1]] for i in list_epochs if i[2][0] == "Q" or i[2][0] == "B"],
-            [coordinate_patch(i[2][3:5]) for i in list_epochs if i[2][0] == "Q" or i[2][0] == "B"], c= "palegoldenrod", lw = 2, zorder = 1)
+            [coordinate_patch(i[2][3:5]) for i in list_epochs if i[2][0] == "Q" or i[2][0] == "B"],
+            c= "palegoldenrod", lw = 0.9, zorder = 1)
 
-    #Plots the trajectory between objects
-    if len(list_between_objects) != 0: #Line below: change the "between objects with/without reward" par bo rewarded or unrewarded
-        ax.scatter([time_average[i[1]] for i in list_between_objects], [coordinate_patch(i[2][3:5]) for i in list_between_objects],
-                   c="turquoise", label = "between object ", marker= "x", zorder = 2)
+    # Plots the trajectory between objects
+    if len(list_between_objects) != 0:
+        # change the "between objects with/without reward" par bo rewarded or unrewarded
+        ax.scatter([time_average[i[1]] for i in list_between_objects],
+                   [coordinate_patch(i[2][3:5]) for i in list_between_objects],
+                   c="turquoise", label = "between object ", marker= "x", s=3, zorder = 2)
     else:
         pass
 
@@ -727,19 +812,24 @@ def figure_coloreddot(turns_df, time, list_epochs, list_quarter_turn, time_avera
     for a in range(2):
         current_list = [when_reward, when_no_reward][a]
         if len(current_list) != 0:
-            ax.scatter([i[0] for i in current_list], [coordinate_patch(i[1]) + 0.1 for i in current_list],
-                        c=colors[a], label=[" ", "no "][a] + "reward", s=2 , zorder=2)
+            ax.scatter([i[0] for i in current_list],
+                       [coordinate_patch(i[1]) + 0.1 for i in current_list],
+                        c=colors[a], label=[" ", "no "][a] + "reward", s=0.08 , zorder=2)
         else:
             pass
 
-    #List of the colors used to diffentiate the quarter turns
-    colors = ["royalblue", "orangered", "orange", "gold", "chocolate", "slategray"]
-    for a in range(6): #Plots the dot for each category of quarter turns
-        current_list = [rewarded, extra, badDirection, wrongObject, doubleWrong, exploring][a]
+    # List of the colors used to diffentiate the QT
+    colors = ["#34a853", "#ff0000", "#9900ff", "#ff6d01", "#990000", "#fbbc04","#f078f0"]
+    # Plots the dot for each category of quarter turns
+    for a in range(7):
+        current_list = [rewarded, depl_turn, timeout_turn, bad_object,
+                        bad_object_direction, bad_direction,extra_turn][a]
         if len(current_list) != 0:
             ax.scatter([time_average[i[0]] for i in current_list],
                        [coordinate_patch(i[2][3:5]) for i in current_list],
-                       c=colors[a], label=["gogt", "extra", "gobt", "bogt", "bobt", "expl"][a], marker="|", zorder=3)
+                       c=colors[a], label=["gogd", "depleting", "timeout",
+                                           "bogd", "bobg", "gobd", "extra"][a], 
+                                           marker="|", s=10, zorder=3)
         else:
             pass
     if REMAINING_REWARDS:
@@ -753,6 +843,7 @@ def figure_coloreddot(turns_df, time, list_epochs, list_quarter_turn, time_avera
     ax.set_ylim(0,5)
     ax.set_xlim(0, 900)
     ax.legend(loc='best')
+    plt.show()
 
 def figure_trajectories(traj_df, current_movement, xgauss, ygauss, speed, angular_speed, acceleration, title='', axs=None):
     if axs is None:
@@ -760,18 +851,18 @@ def figure_trajectories(traj_df, current_movement, xgauss, ygauss, speed, angula
     else:
         ax1, ax2, ax3, ax4 = axs
 
-    for patch in collection_trapeze:  #plot the trapeze around the object
+    for patch in collection_trapeze:  # plot the trapeze around the object
         for trapeze in collection_trapeze[patch]:
             shape = Polygon(np.array(collection_trapeze[patch][trapeze]), color="lemonchiffon")
             ax1.add_patch(shape)
-        for u in current_movement:  #plot each individual trajectory of the current category
+        for u in current_movement:  # plot each individual trajectory of the current category
             colors = plt.cm.rainbow(np.random.random())
             if len(u) != 0:
                 ax1.plot(xgauss[u[0]:u[1]], ygauss[u[0]:u[1]], lw=0.5, c=colors)
             else:
                 pass
 
-    #Plots a colored dot at the begining and end of each epoch
+    # Plots a colored dot at the begining and end of each epoch
     indices_start = [u[0] for u in current_movement]
     indices_end = [u[1] for u in current_movement]
     if len(indices_start) != 0 or len(indices_end) != 0:
@@ -782,7 +873,7 @@ def figure_trajectories(traj_df, current_movement, xgauss, ygauss, speed, angula
 
     timeSpentIn = round(sum([traj_df.loc[traj_df.index[epoch[1]], 'time'] - traj_df.loc[traj_df.index[epoch[0]], 'time'] for epoch in current_movement]), 2)
 
-    #Sets the parameters of the graph
+    # Sets the parameters of the graph
     ax1.set_ylim(0, 500)
     ax1.set_xlim(0, 500)
     ax1.set_title(title + str(len(current_movement)) + f"\n total time: {timeSpentIn}s")
@@ -790,7 +881,7 @@ def figure_trajectories(traj_df, current_movement, xgauss, ygauss, speed, angula
     ax1.get_yaxis().set_visible(False)
 
 
-    #Gets the speed and angular speed depending on the category
+    # Gets the speed and angular speed depending on the category
     speedy = []
     angle_speedy = []
     accelery = []
@@ -800,7 +891,8 @@ def figure_trajectories(traj_df, current_movement, xgauss, ygauss, speed, angula
             angle_speedy += [angular_speed[i]]
             accelery += [acceleration[i]]
 
-    ##################"Plots the speed for the type of trajectory
+    ################## 
+    # Plots the speed for the type of trajectory
     if len(speedy)!= 0:
         ax2.hist(speedy, bins=np.arange(0, 100, 1), density=True)
     else:
@@ -809,7 +901,8 @@ def figure_trajectories(traj_df, current_movement, xgauss, ygauss, speed, angula
     ax2.set_ylim(0, 0.06)
     ax2.axvline(TRUE_CUT_SPEED, c='red', lw=0.5)
 
-    ######################"#Plots the angular speed for the type of trajectory
+    ######################
+    # Plots the angular speed for the type of trajectory
     if len(angle_speedy)!= 0:
         ax3.hist(angle_speedy, bins=np.arange(-50, 50, .5), density=True)
     else :
@@ -822,7 +915,7 @@ def figure_trajectories(traj_df, current_movement, xgauss, ygauss, speed, angula
     ax3.axvline(-15, c='red', lw=0.5)
     ax3.axvline(0, c='k', lw=0.5)
 
-    #Plots the acceleration for the type of trajectory
+    # Plots the acceleration for the type of trajectory
     if len(accelery)!= 0:
         ax4.hist(accelery, bins=np.arange(-25, 25, 0.3), density=True)
     else:
@@ -836,18 +929,18 @@ def figure_stops(traj_df, current_movement, xgauss, ygauss, time_average, stops_
     else:
         ax1, ax2, ax3, ax4 = axs
 
-    for patch in collection_trapeze:#plot the trapeze around the object
+    for patch in collection_trapeze: # plot the trapeze around the object
         for trapeze in collection_trapeze[patch]:
             shape = Polygon(np.array(collection_trapeze[patch][trapeze]), color="lemonchiffon")
             ax1.add_patch(shape)
-        for u in current_movement:#plot each individual trajectory of the current category
+        for u in current_movement: # plot each individual trajectory of the current category
             colors = plt.cm.rainbow(np.random.random())
             if len(u) != 0:
                 ax1.plot(xgauss[u[0]:u[1]], ygauss[u[0]:u[1]], lw=0.5, c=colors)
             else:
                 pass
 
-    #Plots a colored dot at the begining and end of each epoch
+    # Plots a colored dot at the begining and end of each epoch
     indices_start = [u[0] for u in current_movement]
     indices_end = [u[1] for u in current_movement]
     if len(indices_start) != 0 or len(indices_end)!= 0:
@@ -858,7 +951,7 @@ def figure_stops(traj_df, current_movement, xgauss, ygauss, time_average, stops_
 
     timeSpentIn = round(sum([traj_df.loc[traj_df.index[epoch[1]], 'time'] - traj_df.loc[traj_df.index[epoch[0]], 'time'] for epoch in current_movement]), 2)
 
-    #Sets the parameters of the graph
+    # Sets the parameters of the graph
     ax1.set_ylim(0, 500)
     ax1.set_xlim(0, 500)
     ax1.set_title("Stops: " + str(len(current_movement)) + f"\n total time: {timeSpentIn}s")
@@ -868,7 +961,7 @@ def figure_stops(traj_df, current_movement, xgauss, ygauss, time_average, stops_
 
 
     # ############################################
-    # # plot the time of stops after a rewarded quarter turn
+    # plot the time of stops after a rewarded QT
     variable = [time_average[u[1]] - time_average[u[0]]  for u in stops_type["rewarded"]]
     if len(variable) != 0:
         ax2.hist(variable, bins=np.arange(0, 2, 0.05))
@@ -877,7 +970,7 @@ def figure_stops(traj_df, current_movement, xgauss, ygauss, time_average, stops_
     ax2.set_xlabel("Stop duration after\nrewarded turns (s)")
 
     # ############################################
-    # # plot the time of stops after a non-rewarded quarter turn
+    # plot the time of stops after a non-rewarded QT
     variable = [time_average[u[1]] - time_average[u[0]]  for u in stops_type["unrewarded"]]
     if len(variable) != 0:
         ax3.hist(variable, bins=np.arange(0, 2, 0.05))
@@ -886,7 +979,7 @@ def figure_stops(traj_df, current_movement, xgauss, ygauss, time_average, stops_
     ax3.set_xlabel("Stops duration after \nunrewarded turn (s)")
 
     # ############################################
-    # # plot the time of stops after all quarter turn
+    # Plot the time of stops after all QT
     variable = [time_average[u[1]] - time_average[u[0]] for u in stops_type["unrewarded"]] + [time_average[u[1]] - time_average[u[0]]  for u in stops_type["rewarded"]]
     if len(variable) != 0:
         ax4.hist(variable, bins=np.arange(0, 2, 0.05))
@@ -894,23 +987,31 @@ def figure_stops(traj_df, current_movement, xgauss, ygauss, time_average, stops_
         ax4.hist([0], bins=np.arange(0, 2, 0.05))
     ax4.set_xlabel("Stops duration (s)")
 
-def figure_qturns(speed, angular_speed, list_quarter_turn, time_average, angles, axs=None):
+def figure_qturns(speed, angular_speed, list_quarter_turn, time_average, animalfolder, session, angles, axs=None):
     if axs is None:
         _, axs = plt.subplots(4, 2, figsize=(10, 40))
     axs = np.array(axs).reshape(4, 2)
 
-    clock_turn = [epoch for epoch in list_quarter_turn if epoch[2][1] == "w"] #Divides the quarter turns depending on their direction (CW or CCW)
+    # Divides the QT depending on their direction (CW or CCW)
+    clock_turn = [epoch for epoch in list_quarter_turn if epoch[2][1] == "w"]
     anti_clock_turn = [epoch for epoch in list_quarter_turn if epoch[2][1] == "k"]
     clock_angular_speed = [angular_speed[i] for u in clock_turn for i in range(u[0], u[1] + 1) ]
     anti_angular_speed = [angular_speed[i] for u in anti_clock_turn for i in range(u[0], u[1] + 1)]
     clock_speed = [speed[i] for u in clock_turn for i in range(u[0], u[1] + 1)]
     anti_clock_speed = [speed[i] for u in anti_clock_turn for i in range(u[0], u[1] + 1)]
 
+    # Create and save pickles
+
+    pickle_data((clock_angular_speed,anti_angular_speed,clock_speed,anti_clock_speed),
+                animalfolder, session, 'cw_ccw_speeds.pkl')
+
     for col, direction in enumerate(["CW" , "CCW"]):
+
         ##########################
-        #Plot angular speed distribution
+        # Plot angular speed distribution
         if len([clock_angular_speed, anti_angular_speed][col]) != 0:
-            axs[0, col].hist([clock_angular_speed, anti_angular_speed][col], bins=np.arange(-50, 50, .5), density=True)
+            axs[0, col].hist([clock_angular_speed, anti_angular_speed][col],
+                             bins=np.arange(-50, 50, .5), density=True)
         else:
             axs[0, col].hist([0], bins=np.arange(-50, 50, .5), density=True)
         axs[0, col].set_xlabel(f"Angular speed {direction} (degree/s)")
@@ -922,9 +1023,10 @@ def figure_qturns(speed, angular_speed, list_quarter_turn, time_average, angles,
         axs[0, col].axvline(0, c='k', lw=0.5)
 
         ################################
-        #Plot speed distribution
+        # Plot speed distribution
         if len([clock_speed, anti_clock_speed][col])!= 0:
-            axs[1, col].hist([clock_speed, anti_clock_speed][col], bins=np.arange(0, 60, 1), density=True)
+            axs[1, col].hist([clock_speed, anti_clock_speed][col],
+                             bins=np.arange(0, 60, 1), density=True)
         else:
             axs[1, col].hist([0], bins=np.arange(0, 60, 1), density=True)
         axs[1, col].set_xlabel(f"Speed {direction} (cm/s)")
@@ -932,22 +1034,27 @@ def figure_qturns(speed, angular_speed, list_quarter_turn, time_average, angles,
         axs[1, col].axvline(TRUE_CUT_SPEED, c='red', lw=0.5)
 
         #################################
-        #plot the indidual speed profile of every quarter turn
+        # Plot the indidual speed profile of every quarter turn
         for u in [clock_turn, anti_clock_turn][col]:
             axs[2, col].plot(time_average[u[0]:u[1]+1] - time_average[u[0]],
                              speed[u[0]:u[1]+1], lw=0.5, c="dimgray")
 
         if len([clock_turn, anti_clock_turn][col]) != 0:
-            xmed, ymed = compute_median_trajectory([speed[u[0]:u[1]+1] for u in [clock_turn, anti_clock_turn][col]],
-                                                   [time_average[u[0]:u[1]+1] for u in [clock_turn, anti_clock_turn][col]])
+            xmed, ymed = compute_median_trajectory(
+                [speed[u[0]:u[1]+1] for u in [clock_turn, anti_clock_turn][col]],
+                [time_average[u[0]:u[1]+1] for u in [clock_turn, anti_clock_turn][col]])
             axs[2, col].plot(xmed, ymed, c='crimson')
         axs[2, col].set_ylabel(f"{direction} QT speed (cm/s)")
         axs[2, col].set_xlabel("time (s)")
         axs[2, col].set_xlim(0, 0.7)
         axs[2, col].set_ylim(0, 60)
 
+        # Pickle data
+        pickle_data((xmed,ymed), animalfolder, session,
+                    'speed_profile_qt.pkl')
+
         #################################
-        #plot the individual profile of the direction changes of every quarter turn
+        # Plot the individual profile of the direction changes of every QT
         list_temp_orientation = []
         for u in [clock_turn, anti_clock_turn][col]:
             temp_orientation = angles[u[0]:u[1]+1] - angles[u[0]]
@@ -959,33 +1066,41 @@ def figure_qturns(speed, angular_speed, list_quarter_turn, time_average, angles,
                 elif (temp_orientation[i] - temp_orientation[i-1]) > 200:
                     temp_orientation[i] -= 360
             list_temp_orientation.append(temp_orientation)
-            axs[3, col].plot(time_average[u[0]:u[1]+1] - time_average[u[0]], temp_orientation, lw=0.5, c="dimgray")
+            axs[3, col].plot(time_average[u[0]:u[1]+1] - time_average[u[0]],
+                             temp_orientation, lw=0.5, c="dimgray")
 
         if len([clock_turn, anti_clock_turn][col]) != 0:
             xmed, ymed = compute_median_trajectory(list_temp_orientation,
-                                                   [time_average[u[0]:u[1]+1] for u in [clock_turn, anti_clock_turn][col]])
+                        [time_average[u[0]:u[1]+1] for u in [clock_turn, anti_clock_turn][col]])
             axs[3, col].plot(xmed, ymed, c='crimson')
         axs[3, col].set_ylim(-180, 180)
         axs[3, col].set_xlim(0, 0.7)
         axs[3, col].set_ylabel(f"{direction} QT angular speed (deg/s)")
         axs[3, col].set_xlabel("time in s")
 
-def figure_cumul_qturns(list_quarter_turn, rewarded, unrewarded, time_average, axs=None):
+def figure_cumul_qturns(list_quarter_turn, rewarded, unrewarded, time_average, animalfolder, session, axs=None):
     if axs is None:
         _, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 10))
     else:
         ax1, ax2, = axs
 
-    # compute the cumulative sums in accordance to time
-    clock_turn = [epoch for epoch in list_quarter_turn if epoch[2][1] == "w"] #Divides the quarter turns depending on their direction (CW or CCW)
+    # Compute the cumulative sums in accordance to time
+    clock_turn = [epoch for epoch in list_quarter_turn if epoch[2][1] == "w"]
     anti_clock_turn = [epoch for epoch in list_quarter_turn if epoch[2][1] == "k"]
     clockcum = np.cumsum([1 if  indice in [u[0] for u in clock_turn] else 0 for indice in range(len(time_average))])
     anticum = np.cumsum([1 if  indice in [u[0] for u in anti_clock_turn] else 0 for indice in range(len(time_average))])
     reward_time = np.cumsum([1 if  indice in [u[0] for u in rewarded] else 0 for indice in range(len(time_average))])
     unrewarded_time = np.cumsum([1 if  indice in [u[0] for u in unrewarded] else 0 for indice in range(len(time_average))])
 
+    # Pickle datas
+    pickle_data((clockcum,anticum),animalfolder, session,
+                'cw_ccw_cumul.pkl')
+    
+    pickle_data((reward_time,unrewarded_time), animalfolder, session,
+                'rewards_cumul.pkl')
+
     #################################
-    #Plots the cumulative sum of each direction of quarter turn
+    # Plots the cumulative sum of each direction of QT
     ax1.plot(time_average, clockcum, c='#d2725f', label="CW")
     ax1.plot(time_average, anticum, c='#5d93e6', label="CCW")
     ax1.set_ylabel("Cumul # quarter turns")
@@ -993,7 +1108,7 @@ def figure_cumul_qturns(list_quarter_turn, rewarded, unrewarded, time_average, a
     ax1.legend()
 
     ###################################################
-    # Plot the cumulative number of reward and unrewarded quarter turn
+    # Plots the cumulative number of reward and unrewarded QT
     ax2.plot(time_average, reward_time, c="royalblue", label="Rewarded")
     ax2.plot(time_average, unrewarded_time, c="sandybrown", label="Unrewarded")
     ax2.set_ylabel("Cumul # quarter turns")
@@ -1001,8 +1116,9 @@ def figure_cumul_qturns(list_quarter_turn, rewarded, unrewarded, time_average, a
     ax2.legend()
 
 def plot_angular_speed(angular_speed, list_epochs, ax=None):
+
     #########################################
-    #Plot the angular speed for all movements
+    # Plot the angular speed for all movements
     if ax is None:
         _, ax = plt.subplots(1, 1, figsize=(10, 10))
     angle_speedy = [angular_speed[i] for u in list_epochs for i in range(u[0], u[1]+1)]
@@ -1015,7 +1131,7 @@ def plot_session_trajectory(xpositions, ypositions, ax=None):
 
     RESOLUTION = 512, 512
     distances = np.array([((((xpositions[i]-xpositions[i-1])**2)+((ypositions[i]-ypositions[i-1])**2))**0.5) for i in range(1,len(ypositions))])
-    distances *= (0.84 / RESOLUTION[0]) #convert distance to m with apparatus length = 84 cm
+    distances *= (0.84 / RESOLUTION[0]) # Convert distance to m with apparatus length = 84 cm
     totaldistance = np.sum(distances)
 
     ypositions = RESOLUTION[1] - ypositions
@@ -1031,28 +1147,31 @@ def plot_session_speed(xpositions, ypositions, time, ax=None):
         _, ax = plt.subplots(figsize=(5, 5))
 
     RESOLUTION = 512, 512
-    distances = np.array([((((xpositions[i]-xpositions[i-1])**2)+((ypositions[i]-ypositions[i-1])**2))**0.5) for i in range(1,len(ypositions))])
-    distances *= (0.84 / RESOLUTION[0]) #convert distance to m with apparatus length = 84 cm
+    distances = np.array([((((xpositions[i]-xpositions[i-1])**2)+(
+        (ypositions[i]-ypositions[i-1])**2))**0.5) for i in range(1,len(ypositions))])
+    distances *= (0.84 / RESOLUTION[0]) # Convert distance to m with apparatus length = 84 cm
 
     ypositions = RESOLUTION[1] - ypositions
     timebeweenframe = np.diff(time)
     speeds = np.divide(distances, timebeweenframe)
 
-    nEvent, binedges, patches = ax.hist(speeds*100, bins=np.arange(0, 100, 100/25),
+    n_event, binedges, patches = ax.hist(speeds*100, bins=np.arange(0, 100, 100/25),
                                         density=True, facecolor='k', alpha=0.75)
     bincenters = 0.5 * (binedges[1:] + binedges[:-1])
 
-    cruisespeedbinsindexes = np.where(bincenters > 10) #10cm/s is the arbitrary limit between immobility and running
-    cruiseSpeedBinValues = np.take(bincenters, cruisespeedbinsindexes)
-    cruiseSpeedBinsNevent = np.take(nEvent, cruisespeedbinsindexes)
-    meanCruiseSpeed = np.sum(np.multiply(cruiseSpeedBinValues, cruiseSpeedBinsNevent)) / np.sum(cruiseSpeedBinsNevent)
+    # 10cm/s is the arbitrary limit between immobility and running
+    cruisespeedbinsindexes = np.where(bincenters > 10)
+    cruise_speed_bin_values = np.take(bincenters, cruisespeedbinsindexes)
+    cruise_speed_bin_nevent = np.take(n_event, cruisespeedbinsindexes)
+    mean_cruise_speed = np.sum(np.multiply(cruise_speed_bin_values, 
+                                         cruise_speed_bin_nevent)) / np.sum(cruise_speed_bin_nevent)
 
     immobilitybinsindexes = np.where(bincenters < 10)
-    ratioRunvsImmob = np.divide(np.sum(np.take(nEvent, cruisespeedbinsindexes)),
-                                np.sum(np.take(nEvent, immobilitybinsindexes)))
+    ratio_run_immo = np.divide(np.sum(np.take(n_event, cruisespeedbinsindexes)),
+                                np.sum(np.take(n_event, immobilitybinsindexes)))
 
-    ax.set_title(f'Avg cruise speed={meanCruiseSpeed:.2f} cm/s \nRun/Immo ratio={ratioRunvsImmob:.2f}')
-    #axs[1].spines[['right', 'top']].set_visible(False) #need to comment if there is an error
+    ax.set_title(
+        f'Avg cruise speed={mean_cruise_speed:.2f} cm/s \nRun/Immo ratio={ratio_run_immo:.2f}')
     ax.set_xlabel('Speed (cm/s)')
     ax.set_ylabel('Proba of event')
     ax.set_ylim([0, 0.1])
@@ -1069,9 +1188,6 @@ def figure_qt_number(traj_df, ax=None):
     n, bins, patches = ax.hist(allturns_time, bins, density=False,
                                histtype='step', cumulative=True, label='trapeze changes',
                                color=turnPalette['all turns'])
-    #ax.plot(bins[:-1],n,label='all turns',color=turnPalette['all turns'][0],linestyle=turnPalette['all turns'][1])
-    #turn_times=traj_df.loc[traj_df['Rewarded']]
-    #if len(turn_times) == 0:
     turn_times = traj_df.loc[(traj_df['typeOfTurn'] == "gogt") | (traj_df['typeOfTurn'] == "gogd")]
     turn_times=turn_times['time'].to_numpy()
     n, bins, patches = ax.hist(turn_times, bins, density=False, histtype='step',
@@ -1088,7 +1204,8 @@ def list_sessions_analyzed(file):
     else:
         with open(file, "r", encoding="utf-8") as f:
             list_session = f.readlines()
-            list_session_analyzed = [session[0:-1] if session[-1]=="\n" else session for session in list_session]
+            list_session_analyzed = [session[0:-1] if session[-1]=="\n" 
+                                     else session for session in list_session]
     return list_session_analyzed
 
 def figure_title(session, phase, direction, cno):
@@ -1099,11 +1216,14 @@ def figure_title(session, phase, direction, cno):
 def get_phase_direction_cno(param_df):
     try:
         if not param_df.loc[param_df.index[0], "allowRewardDelivery"]:
-            phase = 0  # if no reward can be given, then it's the free exploration
+            # if no reward can be given, then it's the free exploration
+            phase = 0
         elif param_df.loc[param_df.index[0], "number_of_alternativeObject"] == 1:
-            phase = 4  # if only one alternative is available for the objects at a given time in the session, it's session 4
+            # if only one alternative is available for the objects at a given time, it's phase 4
+            phase = 4
         elif param_df.loc[param_df.index[0], "number_of_alternativeObject"] == 3:
-            phase = 3  # then it's phase 3
+            # then it's phase 3
+            phase = 3
         elif param_df.loc[param_df.index[0], "potentialRewardedDirections"] == '[90, 270]':
             phase = 1
         else:
@@ -1139,12 +1259,14 @@ def html_mouse(root, mousename, name_of_figure="Figure.png"):
         f.write(bottom)
 
 
-##########################################################################################################################################
+#################################################
 # Median run computation
-# Modified from: Averaging GPS segments competition 2019. https://doi.org/10.1016/j.patcog.2020.107730
-#                T. Karasek, "SEGPUB.IPYNB", Github 2019. https://gist.github.com/t0mk/eb640963d7d64e14d69016e5a3e93fd6
+# Modified from: Averaging GPS segments competition 2019.
+#                    https://doi.org/10.1016/j.patcog.2020.107730
+#                T. Karasek, "SEGPUB.IPYNB", Github 2019.
+#                    https://gist.github.com/t0mk/eb640963d7d64e14d69016e5a3e93fd6
 # # # should be able to squeeze SEM in SampleSet class
-##########################################################################################################################################
+#################################################
 
 def median(lst):
     sortedLst = sorted(lst)
@@ -1190,7 +1312,8 @@ def point_line_distance(point, start, end):
     if start == end:
         return distance(point, start)
     else:
-        n = abs((end[0] - start[0]) * (start[1] - point[1]) - (start[0] - point[0]) * (end[1] - start[1]))
+        n = abs((end[0] - start[0]) * (start[1] - point[1]) -
+                (start[0] - point[0]) * (end[1] - start[1]))
         d = np.sqrt((end[0] - start[0]) ** 2 + (end[1] - start[1]) ** 2)
         return n / d
 
@@ -1219,11 +1342,11 @@ class SampleSet:
             xm.append(xs)
             ym.append(ys)
         xp, yp = np.median(xm, axis=0), np.median(ym, axis=0)
-        #xp, yp = np.mean(xm, axis=0), np.mean(ym, axis=0)
         return xp, yp
 
     def endpoints(self):
-        cs = np.array([[self.trajs[0].xs[0],self.trajs[0].xs[-1]], [self.trajs[0].ys[0],self.trajs[0].ys[-1]]])
+        cs = np.array([[self.trajs[0].xs[0],self.trajs[0].xs[-1]],
+                       [self.trajs[0].ys[0],self.trajs[0].ys[-1]]])
         xs = np.hstack([t.xs[0] for t in self.trajs] + [t.xs[-1] for t in self.trajs])
         ys = np.hstack([t.ys[0] for t in self.trajs] + [t.ys[-1] for t in self.trajs])
         clabs = []
@@ -1233,8 +1356,6 @@ class SampleSet:
                 ap = np.array([[xs[i]],[ys[i]]])
                 dists = np.linalg.norm(ap - cs, axis=0)
                 clabs.append(np.argmin(dists))
-            #cx = np.array([np.mean(xs[np.where(np.array(clabs)==0)]), np.mean(xs[np.where(np.array(clabs)==1)])])
-            #cy = np.array([np.mean(ys[np.where(np.array(clabs)==0)]), np.mean(ys[np.where(np.array(clabs)==1)])])
             if oldclabs == clabs:
                 break
             oldclabs = clabs
@@ -1281,10 +1402,10 @@ class SampleSet:
             xm.append(xs)
             ym.append(ys)
         if stat == "Med.":
-            self.xp, self.yp = zip(*rdp(list(zip(np.median(xm, axis=0),np.median(ym, axis=0))), eps))
+            self.xp, self.yp = zip(*rdp(list(zip(np.median(xm, axis=0),
+                                                 np.median(ym, axis=0))), eps))
         elif stat == "Avg.":
             self.xp, self.yp = zip(*rdp(list(zip(np.mean(xm, axis=0),np.mean(ym, axis=0))), eps))
-        #self.xp, self.yp = np.mean(xm, axis=0), np.mean(ym, axis=0)
         xp, yp = self.xp,self.yp
         return xp, yp
 
@@ -1341,7 +1462,9 @@ def compute_median_trajectory(posdataRight, timedataRight, stat='Med.'):
     ss.getAvg(zmax, lenlim, eps, stat) # not supposed to do anything but has to be here to work ??????? Therefore, no touchy.
     X, Y = ss.getAvg(zmax, lenlim, eps, stat)
 
-    # Here median computation warps time (~Dynamic Time Warping) so interpolate to get back to 0.04s increments.
-    interpTime = np.linspace(X[0], X[-1], int(X[-1]/0.04)+1) # create time from 0 to median arrival time, evenly spaced 0.04s
+    # Here median computation warps time (~Dynamic Time Warping)
+    # so interpolate to get back to 0.04s increments.
+    interpTime = np.linspace(X[0], X[-1],
+                int(X[-1]/0.04)+1) # create time from 0 to median arrival time, evenly spaced 0.04s
     interpPos = np.interp(interpTime, X, Y) # interpolate the position at interpTime
     return interpTime, interpPos
