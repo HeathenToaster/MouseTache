@@ -126,7 +126,7 @@ REMAINING_REWARDS = False # if true, indicate the number of reward available on 
 MINIMAL_DURATION_STOP = 0.1 #if a stop is shorter than this, merges the two epochs bordering it
 MINIMAL_DURATION_EPOCH = 0.3 #minimal duration of an epoch to be considerd
 TRUE_SIGMA = 1 #the sigma used for the remaining of the analysis
-TRUE_CUT_SPEED = 7 #value to be used for the remaining of the analysis
+TRUE_CUT_SPEED = 7 # this value is the speed in cm/s. It is used to detect when the animals stop running. 
 TRUE_ECART_ANGLE = 1 #if a change is made, must change timeofframes
 
 ######################################
@@ -136,7 +136,7 @@ TRUE_ECART_ANGLE = 1 #if a change is made, must change timeofframes
 # Lots of linting and bad practices to fix
 ######################################
 
-def whichPatch(number):
+def whichPatch(number): # TODO: this below seems unnecessary  
     """send back the string indicating the current patch based on the number recieved
         # 0 = 'NE', 1 = 'NW', 2 = 'SE', 3 = 'SW'
     """
@@ -151,7 +151,7 @@ def whichPatch(number):
     else:
         raise ValueError("The number must be between 0 and 3")
 
-################################
+############################### TODO: below this function comes too early. 
 
 def search_right_turn(time_start, time_end, turns_df):
     for i in range(len(turns_df)):
@@ -204,13 +204,14 @@ def stay_in_patch(patch, xpositions, ypositions, RESOLUTION):
 
     return stay_in_place
 
-################################
+################################ TODO: I guess this function is key and cut the strajectories each time the animal makes a stop
+# probably the variable need to be renamed. 
 
 def cut_in_epoch_speed(cut_off_speed, speed_values, time, MINIMAL_DURATION_STOP, MINIMAL_DURATION_EPOCH):
     """
     cut the trajectory into different part where the animal is moving
     """
-    list_of_epochs = []
+    list_epochs = []
     speed_size = len(speed_values)
     beginning_epoch = 0
 
@@ -223,37 +224,37 @@ def cut_in_epoch_speed(cut_off_speed, speed_values, time, MINIMAL_DURATION_STOP,
                 beginning_epoch = i #if there were no epoch being studied, this is the beginning of the epoch
         elif beginning_epoch == 0:
             pass #if we were not in an epoch, failure to be above the threshold does nothing
-        elif list_of_epochs != [] and (time[beginning_epoch] - time[list_of_epochs[-1][1]] < MINIMAL_DURATION_STOP):#if the interval with the previous epoch was too short, change its end to the end of this epoch
-            list_of_epochs[-1][1] = i-1
+        elif list_epochs != [] and (time[beginning_epoch] - time[list_epochs[-1][1]] < MINIMAL_DURATION_STOP):#if the interval with the previous epoch was too short, change its end to the end of this epoch
+            list_epochs[-1][1] = i-1
             beginning_epoch = 0
         else:
-            list_of_epochs.append([beginning_epoch, i-1, "N", 0])#by default, every epoch is noted "N" for "not a quarter turn"
+            list_epochs.append([beginning_epoch, i-1, "N", 0])#by default, every epoch is noted "N" for "not a quarter turn"
             beginning_epoch = 0
 
 
     if beginning_epoch == 0:
         pass #once the loop is ended check if there is a suitable epoch in memory
-    elif list_of_epochs != [] and (time[beginning_epoch] - time[list_of_epochs[-1][1]] < MINIMAL_DURATION_STOP): #if the interval with the previous epoch was too short, change its end to the end of this epoch
-        list_of_epochs[-1][1] = i-1
+    elif list_epochs != [] and (time[beginning_epoch] - time[list_epochs[-1][1]] < MINIMAL_DURATION_STOP): #if the interval with the previous epoch was too short, change its end to the end of this epoch
+        list_epochs[-1][1] = i-1
         beginning_epoch = 0
     elif (time[speed_size - 1] - time[beginning_epoch]) < MINIMAL_DURATION_EPOCH:
         pass
     else:
-        list_of_epochs.append([beginning_epoch, speed_size - 1, "N", 0]) #the N at the end is for "not a quarter turn". every epoch is not a quarter turn until proven otherwise
+        list_epochs.append([beginning_epoch, speed_size - 1, "N", 0]) #the N at the end is for "not a quarter turn". every epoch is not a quarter turn until proven otherwise
 
-    size_len_epoch = len(list_of_epochs) # Number of epochs in the list
+    size_len_epoch = len(list_epochs) # Number of epochs in the list
     a = 0
     
     # Check if the epoch is long enough
     while a < size_len_epoch:
-        if (time[list_of_epochs[a][1]] - time[list_of_epochs[a][0]]) < MINIMAL_DURATION_EPOCH:
-            _ = list_of_epochs.pop(a) #if the epoch is too short to be considerded, discard it
+        if (time[list_epochs[a][1]] - time[list_epochs[a][0]]) < MINIMAL_DURATION_EPOCH:
+            _ = list_epochs.pop(a) #if the epoch is too short to be considerded, discard it
             size_len_epoch -= 1
         else:
             a+= 1
 
-    for i in range(len(list_of_epochs)):
-        current_point = list_of_epochs[i][0] #get the current beginning of the epoch
+    for i in range(len(list_epochs)):
+        current_point = list_epochs[i][0] #get the current beginning of the epoch
         acceleration = (speed_values[current_point + 1] - speed_values[current_point]) / (time[current_point + 1] - time[current_point])
         try:
             previous_acceleration = (speed_values[current_point ] - speed_values[current_point - 1]) / (time[current_point] - time[current_point - 1])
@@ -266,9 +267,9 @@ def cut_in_epoch_speed(cut_off_speed, speed_values, time, MINIMAL_DURATION_STOP,
                 previous_acceleration = (speed_values[current_point ] - speed_values[current_point - 1]) / (time[current_point] - time[current_point - 1])
             except:  # FIX ME: that's a bad practice to catch all exceptions
                 previous_acceleration = -1#if this is the first point, there is no previous acceleration, so break out of the loop
-        list_of_epochs[i][0] = current_point#change the beginning of the epoch for the beginning of the acceleration
+        list_epochs[i][0] = current_point#change the beginning of the epoch for the beginning of the acceleration
 
-        current_point = list_of_epochs[i][1] #get the current end of the epoch
+        current_point = list_epochs[i][1] #get the current end of the epoch
         try:
             acceleration = (speed_values[current_point + 1] - speed_values[current_point]) / (time[current_point + 1] - time[current_point])#calculate the acceleration of the segment just AFTER the end of the epoch
         except:
@@ -282,10 +283,10 @@ def cut_in_epoch_speed(cut_off_speed, speed_values, time, MINIMAL_DURATION_STOP,
             except:
                 acceleration = 1
         #change the end of the epoch for the end of the decceleration
-        list_of_epochs[i][1] = current_point
-    return list_of_epochs
+        list_epochs[i][1] = current_point
+    return list_epochs
 
-################################
+################################ 
 
 def calcul_angle(ycoordinate, ecart, xcoordinate):
     angles = np.array([np.angle(xcoordinate[i]- xcoordinate[i-ecart] + (ycoordinate[i] - ycoordinate[i-ecart]) * 1j , deg= True) for i in range(ecart, len(xcoordinate))])
@@ -294,6 +295,7 @@ def calcul_angle(ycoordinate, ecart, xcoordinate):
     return angles #return the orientation of the mouse across time and the modified epochs
 
 ################################
+## TODO: the code below return something called list_epochs. Seems weirdly similar to list_of_epochs
 
 def analysis_trajectory(time, xgauss, ygauss,
                         collection_trapeze, turns_df,
@@ -541,6 +543,11 @@ def process_session(mouseFolder_Path, session, process=False):
         depleting = [epoch for epoch in list_quarter_turn if epoch[2][2] == 'D'] # Added
         timeout = [epoch for epoch in list_quarter_turn if epoch[2][2] == 'T'] # Added
 
+        #David: I feel that the list_epochs is done. Lets try to pickleit
+        pickle_data(data=list_epochs, animal_folder = mouseFolder_Path, session=session,
+                     filename = 'all_running_epochs.pkl')
+        
+        print('I just passed the new pickle action')
         #between_reward = [epoch for epoch in list_between_objects if epoch[2][5] == 'r'] # Was commented
         #between_unrewarded = [epoch for epoch in list_between_objects if epoch[2][5] == 'n'] # Was commented
 
@@ -668,6 +675,7 @@ def process_session(mouseFolder_Path, session, process=False):
                     edgecolor='none', bbox_inches='tight', format="png", dpi=180)
 
         plt.close('all')
+    return list_epochs
 
 def load_data(mouseFolder_Path, session):
     try:
@@ -727,7 +735,7 @@ def pickle_data(data : Any, animal_folder: Any, session, filename: str) -> None:
         return None
 
     except Exception as e:
-        print(f"An error occurred while unpickling data: {e}")
+        print(f"An error occurred while pickling data: {e}")
         return None
 
 def unpickle_data(path : Any, filename : str) -> Any :
@@ -1139,7 +1147,7 @@ def plot_session_trajectory(xpositions, ypositions, ax=None):
     ax.plot(xpositions, ypositions, linewidth=0.5, c='k')
     ax.set_xlim(0, 500)
     ax.set_ylim(0, 500)
-    ax.set_title(f'Tot dist: {totaldistance:.2f} m')
+    ax.set_title(f'Total dist: {totaldistance:.2f} m')
     ax.axis('off')
 
 def plot_session_speed(xpositions, ypositions, time, ax=None):
