@@ -99,7 +99,7 @@ def points_in_polygon(polygon, pts):
     mask = mask1 | mask2 | mask3
     return mask[0]
 
-def cm2inch(number):
+def cm2inch(number): #not used ?
     """
     convert cm to inches
     """
@@ -295,7 +295,7 @@ def calcul_angle(ycoordinate, ecart, xcoordinate):
     return angles #return the orientation of the mouse across time and the modified epochs
 
 ################################
-## TODO: the code below return something called list_epochs. Seems weirdly similar to list_of_epochs
+
 
 def analysis_trajectory(time, xgauss, ygauss,
                         collection_trapeze, turns_df,
@@ -453,26 +453,30 @@ def analysis_trajectory(time, xgauss, ygauss,
 
 
 ######################################
-# Heavily modified from the original AnalysisFunction()
-# The original function was not really tested and the code was not carefully checked
+#  Modified by Thomas Morvan from the original AnalysisFunction() made by Alice LeBars
+#
 # This function has been split into multiple functions to make it more readable
 # and to allow for more flexibility in the analysis.
 #
-# Here, the base function "AnalysisFunction" is cut in subfunctions to make it legible.
+# Here, the base function "AnalysisFunction" is cut in subfunctions to make it more readable.
 # Essentially, we now have one function by type of plot, their inputs are the
 # required data they need and the ax(s) in which to draw the plot.
 # These functions are called in process_session().
-# The processing of the data has not been changed, so the results should be the same, and
-# I should not be blamed for any error or strange stuff in the resuls ^^
+# The processing of the data has not been changed, so the results should be the same
 ######################################
 
 def process_session(mouseFolder_Path, session, process=False):
-    """This is a (futile) attempt to clean up the original code and make it 
-    more readable instead of rewriting everything.
+    """This function cuts the trajectory based on a running speed threshold and minimal duration of low speed 
+    on coutinuous running bouts. 
+    Depending on the position of the start and end points of the running boots, the boots are split into different categories
+    They can be 
+    -quarter turns (when the mouse starts and stops around the same tower)
+    -between objects/tower (when the mouse starts and stops around to different tower).
+    -toward objects/otwer (when the mouse starts away from a tower and stops around tower).
+    -other movements (when the mice stops outside a tower) 
+    The code overall works (boots of locomotion are correctly spleeted). Some special case needs to be thought again (what happend when mice do half-turn)
+    The code needs to be optimize and most of the name of variable are not very good
 
-    The original code was not really tested and the code was not carefully checked.
-    This function calls all the other functions defined below to process the data and plot 
-    the results defined in the original code.
     inputs: 
         mouseFolder_Path: path to the folder containing the data
         session: name of the session to process
@@ -509,10 +513,17 @@ def process_session(mouseFolder_Path, session, process=False):
         ygauss = smooth(yposition, TRUE_SIGMA) # Smoothes the positions with true sigma
 
         # Does the actual analysis. The remaining part consists in accessing the pertinent informations and plotting them
-        distance, speed, time_average, acceleration, angles, angular_speed, list_epochs = analysis_trajectory(
+        distances, speed, time_average, acceleration, angles, angular_speed, list_epochs = analysis_trajectory(
             time, xgauss, ygauss, collection_trapeze, turns_df, TRUE_CUT_SPEED, TRUE_ECART_ANGLE, RESOLUTION,
             MIN_DURATION_EPOCH=MINIMAL_DURATION_EPOCH, MIN_DURATION_STOP=MINIMAL_DURATION_STOP)
 
+        
+       
+        totaldistance = np.sum(distances)
+        pickle_data(data=totaldistance, animal_folder = mouseFolder_Path, session=session,
+                     filename = 'distance_traveled.pkl')
+        #print(f"total distance covered in this session {totaldistance}")
+        
         # Prepare lists of epochs corresponding to diffrent type of behavior
         stops_type = {"rewarded":[], "unrewarded":[]}
         for i in range(len(list_epochs) - 1):
@@ -547,7 +558,51 @@ def process_session(mouseFolder_Path, session, process=False):
         pickle_data(data=list_epochs, animal_folder = mouseFolder_Path, session=session,
                      filename = 'all_running_epochs.pkl')
         
-        print('I just passed the new pickle action')
+        #DAvid. Using the list_quarter_turn we can get the number of consecutive QT done at each visit of a tower
+        # Function to extract consecutive quarter turns
+        # Function to compute consecutive quarter turns
+        def compute_consecutive_quarter_turns(traj_df, list_quarter_turn, turns_df):
+            consecutive_quarter_turns = []
+            current_tower = None
+            count = 0
+            start_time = None
+
+            for idx, thisQT in enumerate(list_quarter_turn):
+                start_index, end_index = thisQT[0], thisQT[1]
+
+                if start_index < 0 or end_index >= len(traj_df):
+                    print(f"Indexes out of bounds for thisQT: {thisQT}")
+                    continue
+
+                quarter_turn = traj_df.iloc[start_index:end_index + 1]
+                
+                turns_in_QT = turns_df[(turns_df['time'] >= quarter_turn['time'].iloc[0]) & (turns_df['time'] <= quarter_turn['time'].iloc[-1])]
+                
+                if not turns_in_QT.empty:
+                    current_patch = turns_in_QT.iloc[0]['currentPatch']
+                    if current_patch != current_tower:
+                        if current_tower is not None:
+                            consecutive_quarter_turns.append([start_time, quarter_turn['time'].iloc[-1], current_tower, count])
+                        current_tower = current_patch
+                        start_time = quarter_turn['time'].iloc[0]
+                        count = 1
+                    else:
+                        count += 1
+
+            if current_tower is not None:
+                consecutive_quarter_turns.append([start_time, quarter_turn['time'].iloc[-1], current_tower, count])
+
+            return consecutive_quarter_turns
+
+        # Example usage:
+        consecutive_quarter_turns = compute_consecutive_quarter_turns(traj_df, list_quarter_turn, turns_df)
+
+        
+        pickle_data(data=consecutive_quarter_turns, animal_folder = mouseFolder_Path, session=session,
+                     filename = 'consecutive_quarter_turns.pkl')
+        
+        
+        
         #between_reward = [epoch for epoch in list_between_objects if epoch[2][5] == 'r'] # Was commented
         #between_unrewarded = [epoch for epoch in list_between_objects if epoch[2][5] == 'n'] # Was commented
 
@@ -762,6 +817,7 @@ def unpickle_data(path : Any, filename : str) -> Any :
         print(f"An error occurred while unpickling data: {e}")
         return None
 
+#Raster plot figure
 def figure_coloreddot(turns_df, time, list_epochs, list_quarter_turn, time_average, list_between_objects, ax=None):
     if ax is None:
         _, ax = plt.subplots(figsize=(60, 5))
@@ -1149,6 +1205,7 @@ def plot_session_trajectory(xpositions, ypositions, ax=None):
     ax.set_ylim(0, 500)
     ax.set_title(f'Total dist: {totaldistance:.2f} m')
     ax.axis('off')
+    
 
 def plot_session_speed(xpositions, ypositions, time, ax=None):
     if ax is None:
