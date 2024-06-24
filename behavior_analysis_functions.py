@@ -730,7 +730,7 @@ def process_session(mouseFolder_Path, session, process=False):
                     edgecolor='none', bbox_inches='tight', format="png", dpi=180)
 
         plt.close('all')
-    return list_epochs
+    #return list_epochs
 
 def load_data(mouseFolder_Path, session):
     try:
