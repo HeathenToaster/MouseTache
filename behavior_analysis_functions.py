@@ -125,7 +125,7 @@ collection_trapeze["SE"]["N"], collection_trapeze["SE"]["E"], collection_trapeze
 REMAINING_REWARDS = False # if true, indicate the number of reward available on an object when the mouse starts to go around
 MINIMAL_DURATION_STOP = 0.1 #if a stop is shorter than this, merges the two epochs bordering it
 MINIMAL_DURATION_EPOCH = 0.3 #minimal duration of an epoch to be considerd
-TRUE_SIGMA = 1 #the sigma used for the remaining of the analysis
+TRUE_SIGMA = 1 #the sigma used for the remaining of the analysis for smoothing
 TRUE_CUT_SPEED = 7 # this value is the speed in cm/s. It is used to detect when the animals stop running. 
 TRUE_ECART_ANGLE = 1 #if a change is made, must change timeofframes
 
@@ -504,11 +504,11 @@ def process_session(mouseFolder_Path, session, process=False):
         traj_df, turns_df, param_df = load_data(mouseFolder_Path, session)
         phase, direction, cno = get_phase_direction_cno(param_df)
 
-        # Unpack the data
+        # smooth the trajectory and correct for some open CV flipping
         time = traj_df['time'].to_numpy()
         xposition = traj_df['xposition'].to_numpy()
         yposition = traj_df['yposition'].to_numpy()
-        yposition = RESOLUTION[1] - yposition # yposition is inverted, puts it back in the right way
+        yposition = RESOLUTION[1] - yposition # yposition is inverted, puts it back in the right way. DAvid: this is not simply an inversion because resolution is added
         xgauss = smooth(xposition, TRUE_SIGMA)
         ygauss = smooth(yposition, TRUE_SIGMA) # Smoothes the positions with true sigma
 
