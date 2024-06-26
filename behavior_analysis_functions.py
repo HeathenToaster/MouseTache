@@ -561,6 +561,7 @@ def process_session(mouseFolder_Path, session, process=False):
         #DAvid. Using the list_quarter_turn we can get the number of consecutive QT done at each visit of a tower
         # Function to extract consecutive quarter turns
         # Function to compute consecutive quarter turns
+        # see AnalyseQuarterTurnsPerVisit.ipynb
         def compute_consecutive_quarter_turns(traj_df, list_quarter_turn, turns_df):
             consecutive_quarter_turns = []
             current_tower = None
