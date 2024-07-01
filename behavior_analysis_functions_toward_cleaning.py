@@ -1,7 +1,7 @@
 # pylint: disable=no-member
 
 """
-This file contains the functions used to process the trajectory of mice duribehavior in the patchouris.
+This file contains the functions used to process the trajectory of mice duribehavior in the towerouris.
 Most of the code has been written by an intern that worked on the project.
 Therefore, the code is not well documented, weirdly structured, weirdly written,
 and not tested. The code is also not very efficient and could be optimized. There
@@ -21,9 +21,26 @@ plt.style.use('./paper.mplstyle')
 ######################################
 # maze utils
 ######################################
-MOUSE_STRING = '---{,_,">'
-RESOLUTION = 512, 512
-TRAPEZE_SIZE = 35 #how much to extend outside of the objects to detect the trajectories
+
+RESOLUTION = 512, 512 # this gives the resolution in pixel of the video recorded(trajectory of the mice in the maze)  
+TRAPEZE_SIZE = 50 # rewards are delivered in the maze around 4 towers,  when mice a switch from one trapze to another
+
+# +-----------------+
+# | \   Trapze N  / |
+# |  +-----------+  |
+# |  |           |  |
+# |TW|   Tower   |TE|
+# |  |           |  |
+# |  |           |  |
+# |  +-----------+  |
+# | /    Trap S   \ |
+# +-----------------+
+
+
+
+
+
+
 #Dictionary to set-up the color palette (in HEX) for the graphs and HTML (turns and phases colors)
 turnPalette= {'gogd':'#86d065', #green
               'gobd':'#f1c232', #yellow
@@ -39,32 +56,47 @@ phasePalette= {'Phase1':'#b4a7d6', #purple # To do redo with type of turn color 
                'Phase4':'#f5b779', #orange
                'Other':'#fbabd2'} #pink
 
-def trapezes_from_patch(patch, width):
+def trapezes_from_tower(tower_coordinates, width):
     """
-    generate the trapezes coordinates surrounding a patch
+    generate the trapezes coordinates surrounding a tower
     inputs:
-    patch - coordinates of a patch [[Xa, Ya], [Xb, Yb], [Xc, Yc], [Xd, Yd]]
+    tower_coordinates - coordinates of a tower [[Xa, Ya], [Xb, Yb], [Xc, Yc], [Xd, Yd]]
     width - width of the trapeze in pixels
     outputs:
     coordinates [[Xa, Ya], [Xb, Yb], [Xc, Yc], [Xd, Yd]] for the 4 trapezes.
     
-    trapezes_from_patch(SWpatch_coords, 200)
+    trapezes_from_tower(SWtower_coords, 200)
     """
 
-    N = [patch[0], patch[1], [patch[1][0]+width, patch[1][1]+width], [patch[0][0]-width, patch[0][1]+width]]
-    E = [patch[1], patch[2], [patch[2][0]+width, patch[2][1]-width], [patch[1][0]+width, patch[1][1]+width]]
-    S = [patch[2], patch[3], [patch[3][0]-width, patch[3][1]-width], [patch[2][0]+width, patch[2][1]-width]]
-    W = [patch[3], patch[0], [patch[0][0]-width, patch[0][1]+width], [patch[3][0]-width, patch[3][1]-width]]
-    return N, E, S, W
+    N_Trapeze = [tower_coordinates[0], tower_coordinates[1], [tower_coordinates[1][0]+width, tower_coordinates[1][1]+width], [tower_coordinates[0][0]-width, tower_coordinates[0][1]+width]]
+    E_Trapeze = [tower_coordinates[1], tower_coordinates[2], [tower_coordinates[2][0]+width, tower_coordinates[2][1]-width], [tower_coordinates[1][0]+width, tower_coordinates[1][1]+width]]
+    S_Trapeze = [tower_coordinates[2], tower_coordinates[3], [tower_coordinates[3][0]-width, tower_coordinates[3][1]-width], [tower_coordinates[2][0]+width, tower_coordinates[2][1]-width]]
+    W_Trapeze = [tower_coordinates[3], tower_coordinates[0], [tower_coordinates[0][0]-width, tower_coordinates[0][1]+width], [tower_coordinates[3][0]-width, tower_coordinates[3][1]-width]]
+    return N_Trapeze, E_Trapeze, S_Trapeze, W_Trapeze
 
-def points_in_polygon(polygon, pts):
+
+#XY coordinates for each tower in 512*512 pixel resolution. Real values 2048*2048 pixels images value after 4x bigger
+NWtower_coords = [[104, 125], [173, 125], [173, 201], [104, 201]]
+NEtower_coords = [[330, 120], [400, 120], [400, 200], [330, 200]]
+SWtower_coords = [[109, 351], [181, 351], [181, 410], [109, 410]]
+SEtower_coords = [[330, 350], [400, 350], [400, 410], [330, 410]]
+# generate the a dictionnary with the coordinates of all the trapeze around the 4 towers
+collection_trapeze = {"NW":dict(), "NE":dict(), "SW":dict(), "SE":dict()}
+collection_trapeze["NW"]["N"], collection_trapeze["NW"]["E"], collection_trapeze["NW"]["S"], collection_trapeze["NW"]["W"] = trapezes_from_tower(NWtower_coords, TRAPEZE_SIZE)
+collection_trapeze["NE"]["N"], collection_trapeze["NE"]["E"], collection_trapeze["NE"]["S"], collection_trapeze["NE"]["W"] = trapezes_from_tower(NEtower_coords, TRAPEZE_SIZE)
+collection_trapeze["SW"]["N"], collection_trapeze["SW"]["E"], collection_trapeze["SW"]["S"], collection_trapeze["SW"]["W"] = trapezes_from_tower(SWtower_coords, TRAPEZE_SIZE)
+collection_trapeze["SE"]["N"], collection_trapeze["SE"]["E"], collection_trapeze["SE"]["S"], collection_trapeze["SE"]["W"] = trapezes_from_tower(SEtower_coords, TRAPEZE_SIZE)
+
+
+
+def mouse_in_trapeze(polygon, pts):
     """
     inputs:
     polygon - coordinates of the trapeze [[Xa, Ya], [Xb, Yb], [Xc, Yc], [Xd, Yd]] or N/E/S/W
     pts - mouse coordinates [[x, y]]
     output:
     returns True/False if pts is inside/outside polygon
-    e.g. points_in_polygon([[1300,1650],[1600,1650],[1750,1800],[1150,1800]], [[x, y]])
+    e.g. mouse_in_trapeze([[1300,1650],[1600,1650],[1750,1800],[1150,1800]], [[x, y]])
 
     The idea is draw an infinite line to the right of [x, y] and count the number of time it 
     crosses the shape, if odd it's inside, if even it's outside.
@@ -99,23 +131,67 @@ def points_in_polygon(polygon, pts):
     mask = mask1 | mask2 | mask3
     return mask[0]
 
-def cm2inch(number): #not used ?
-    """
-    convert cm to inches
-    """
-    return number/2.54
-    
-#define the coordinates of each patch
-NWpatch_coords = [[104, RESOLUTION[1] -  125], [173, RESOLUTION[1] -  125], [173, RESOLUTION[1] -  201], [104, RESOLUTION[1] -  201]]
-NEpatch_coords = [[330, RESOLUTION[1] -  120], [400, RESOLUTION[1] -  120], [400, RESOLUTION[1] -  200], [330, RESOLUTION[1] -  200]]
-SWpatch_coords = [[109, RESOLUTION[1] -  351], [181, RESOLUTION[1] -  351], [181, RESOLUTION[1] -  410], [109, RESOLUTION[1] -  410]]
-SEpatch_coords = [[330, RESOLUTION[1] -  350], [400, RESOLUTION[1] -  350], [400, RESOLUTION[1] -  410], [330, RESOLUTION[1] -  410]]
 
-collection_trapeze = {"NW":dict(), "NE":dict(), "SW":dict(), "SE":dict()}
-collection_trapeze["NW"]["N"], collection_trapeze["NW"]["E"], collection_trapeze["NW"]["S"], collection_trapeze["NW"]["W"] = trapezes_from_patch(NWpatch_coords, TRAPEZE_SIZE)
-collection_trapeze["NE"]["N"], collection_trapeze["NE"]["E"], collection_trapeze["NE"]["S"], collection_trapeze["NE"]["W"] = trapezes_from_patch(NEpatch_coords, TRAPEZE_SIZE)
-collection_trapeze["SW"]["N"], collection_trapeze["SW"]["E"], collection_trapeze["SW"]["S"], collection_trapeze["SW"]["W"] = trapezes_from_patch(SWpatch_coords, TRAPEZE_SIZE)
-collection_trapeze["SE"]["N"], collection_trapeze["SE"]["E"], collection_trapeze["SE"]["S"], collection_trapeze["SE"]["W"] = trapezes_from_patch(SEpatch_coords, TRAPEZE_SIZE)
+#David improved version of mouse_in_trapeze
+
+
+
+# def point_in_polygon(trapezoid_vertices, mouse_position):
+#     """
+#     Determine if mouse position is inside or outside a trapezoid polygon.
+
+#     Args:
+#     - trapezoid_vertices: Coordinates of the trapezoid vertices [[Xa, Ya], [Xb, Yb], [Xc, Yc], [Xd, Yd]]
+#     - mouse_position: Coordinates of the mouse position [x, y]
+
+#     Returns:
+#     - mask: Boolean where True means mouse position is inside the trapezoid, False means outside
+#     """
+
+#     # Convert inputs to numpy arrays for numerical operations
+#     mouse_position = np.asarray(mouse_position, dtype='float32')
+#     polygon = np.asarray(trapezoid_vertices, dtype='float32')
+
+#     # Create a closed contour by repeating the first vertex at the end
+#     contour = np.vstack((polygon[1:], polygon[:1]))
+
+#     # Check if mouse position is exactly on the vertices of the polygon
+#     on_vertices_mask = (mouse_position == polygon).all(axis=-1)
+
+#     # Determine if mouse position lies on the edges of the polygon
+#     on_edges_mask = (
+#         (polygon[:, 1] > mouse_position[1]) != (contour[:, 1] > mouse_position[1])
+#     ).any()
+
+#     # Calculate differences and slopes for edge crossing determination
+#     edge_diff = contour - polygon
+#     slope = ((mouse_position[0] - polygon[:, 0]) * edge_diff[:, 1]) - (
+#         edge_diff[:, 0] * (mouse_position[1] - polygon[:, 1])
+#     )
+
+#     # Check if mouse position lies on edges
+#     on_edges_slope_zero_mask = slope == 0
+#     on_edges_and_inside_mask = on_edges_mask & on_edges_slope_zero_mask
+
+#     # Determine if mouse position is inside the polygon based on crossing count
+#     cross_upwards = (polygon[:, 1] > mouse_position[1]) != (
+#         contour[:, 1] > mouse_position[1]
+#     )
+#     cross_downwards = slope < 0
+#     crossing_count = np.count_nonzero(cross_upwards & cross_downwards)
+
+#     inside_mask = crossing_count % 2 != 0
+
+#     # Combine masks to get the final result for the mouse position
+#     mask = on_vertices_mask | on_edges_and_inside_mask | inside_mask
+
+#     return mask
+
+
+
+
+
+    
 
 
 ######################################
@@ -123,8 +199,8 @@ collection_trapeze["SE"]["N"], collection_trapeze["SE"]["E"], collection_trapeze
 ######################################
 
 REMAINING_REWARDS = False # if true, indicate the number of reward available on an object when the mouse starts to go around
-MINIMAL_DURATION_STOP = 0.1 #if a stop is shorter than this, merges the two epochs bordering it
-MINIMAL_DURATION_EPOCH = 0.3 #minimal duration of an epoch to be considerd
+Pause_min_duration = 0.1 #if a stop is shorter than this, merges the two epochs bordering it
+Run_min_duration = 0.3 #minimal duration of an epoch to be considerd
 TRUE_SIGMA = 1 #the sigma used for the remaining of the analysis for smoothing
 TRUE_CUT_SPEED = 7 # this value is the speed in cm/s. It is used to detect when the animals stop running. 
 TRUE_ECART_ANGLE = 1 #if a change is made, must change timeofframes
@@ -136,8 +212,8 @@ TRUE_ECART_ANGLE = 1 #if a change is made, must change timeofframes
 # Lots of linting and bad practices to fix
 ######################################
 
-def whichPatch(number): # TODO: this below seems unnecessary  
-    """send back the string indicating the current patch based on the number recieved
+def whichTower(number): # TODO: this below seems unnecessary  
+    """send back the string indicating the current tower based on the number recieved
         # 0 = 'NE', 1 = 'NW', 2 = 'SE', 3 = 'SW'
     """
     if number == 0:
@@ -161,44 +237,44 @@ def search_right_turn(time_start, time_end, turns_df):
 
 ################################
 
-def is_in_a_goal(xposition, yposition, current_patch, dictionnaire_of_goals):
+def is_in_a_goal(xposition, yposition, current_tower, dictionnaire_of_goals):
     """
-    for every goal in the list, test if the position is inside using points_in_polygon. return a bool
+    for every goal in the list, test if the position is inside using mouse_in_trapeze. return a bool
     """
 
     in_a_trapeze = False
-    for i in dictionnaire_of_goals[current_patch]:
-        if points_in_polygon(polygon= dictionnaire_of_goals[current_patch][i], pts = [[xposition, yposition]]):
+    for i in dictionnaire_of_goals[current_tower]:
+        if mouse_in_trapeze(polygon= dictionnaire_of_goals[current_tower][i], pts = [[xposition, yposition]]):
             in_a_trapeze = True
     return in_a_trapeze
 
 ################################
 
-def coordinate_patch(patch): #give a y coordinate corresponding to the
-    """give the number corresponding to the patch. Patch must be either 'SW', 'NW', 'SE' or 'NE' """
-    if patch == "NE":
+def coordinate_tower(tower): #give a y coordinate corresponding to the
+    """give the number corresponding to the tower. Tower must be either 'SW', 'NW', 'SE' or 'NE' """
+    if tower == "NE":
         return 1
-    elif patch == "NW":
+    elif tower == "NW":
         return 2
-    elif patch == "SE":
+    elif tower == "SE":
         return 3
-    elif patch == "SW":
+    elif tower == "SW":
         return 4
     else:
-        raise ValueError("The patch must be either 'SW', 'NW', 'SE' or 'NE'")
+        raise ValueError("The tower must be either 'SW', 'NW', 'SE' or 'NE'")
 
 ################################
 
-def stay_in_patch(patch, xpositions, ypositions, RESOLUTION):
-    """ check if the point change patch at a given moment. Patch must be either 'SW', 'NW', 'SE' or 'NE' """
+def stay_in_tower(tower, xpositions, ypositions, RESOLUTION):
+    """ check if the point change tower at a given moment. Tower must be either 'SW', 'NW', 'SE' or 'NE' """
     stay_in_place = True
     indice = 0
     max_indice = len(xpositions)
 
-    patch = coordinate_patch(patch) - 1
+    tower = coordinate_tower(tower) - 1
 
-    while indice < max_indice and stay_in_place:#check for every point of the trajectory if they are in a different patch than the first one
-        if patch != (xpositions[indice] < RESOLUTION[0] / 2) * 1 + (ypositions[indice] < RESOLUTION[1] / 2) * 2:
+    while indice < max_indice and stay_in_place:#check for every point of the trajectory if they are in a different tower than the first one
+        if tower != (xpositions[indice] < RESOLUTION[0] / 2) * 1 + (ypositions[indice] < RESOLUTION[1] / 2) * 2:
             stay_in_place = False
         indice += 1
 
@@ -207,84 +283,86 @@ def stay_in_patch(patch, xpositions, ypositions, RESOLUTION):
 ################################ TODO: I guess this function is key and cut the strajectories each time the animal makes a stop
 # probably the variable need to be renamed. 
 
-def cut_in_epoch_speed(cut_off_speed, speed_values, time, MINIMAL_DURATION_STOP, MINIMAL_DURATION_EPOCH):
+def define_run_epochs(cut_off_speed, trajectory_speeds, trajectory_times, Pause_min_duration, Run_min_duration):
     """
-    cut the trajectory into different part where the animal is moving
+    cut the trajectory into continuous epochs in which the mouse is moving (above a certain speed called cut_off_speed)
+    a minimal duration of low speed is necessary to be considered as the end of a run
+    similarly a miinimal duration of high speed is necessary to be considered as a run
     """
-    list_epochs = []
-    speed_size = len(speed_values)
+    run_epochs = []
+    #speed_size = len(trajectory_speeds)
     beginning_epoch = 0
 
-    if speed_size != len(time):
-        raise ValueError("speed and time have different length")
+    if len(trajectory_speeds) != len(trajectory_times):
+        raise ValueError("trajectory_speeds and trajectory_times have different length")
 
-    for i in range(speed_size): #
-        if speed_values[i] >= cut_off_speed:#if the speed is above the cut-off value
+    for i in range(len(trajectory_speeds)): #
+        if trajectory_speeds[i] >= cut_off_speed:#if the speed is above the cut-off value
             if beginning_epoch ==0:
                 beginning_epoch = i #if there were no epoch being studied, this is the beginning of the epoch
         elif beginning_epoch == 0:
             pass #if we were not in an epoch, failure to be above the threshold does nothing
-        elif list_epochs != [] and (time[beginning_epoch] - time[list_epochs[-1][1]] < MINIMAL_DURATION_STOP):#if the interval with the previous epoch was too short, change its end to the end of this epoch
-            list_epochs[-1][1] = i-1
+        elif run_epochs != [] and (trajectory_times[beginning_epoch] - trajectory_times[run_epochs[-1][1]] < Pause_min_duration):#if the interval with the previous epoch was too short, change its end to the end of this epoch
+            run_epochs[-1][1] = i-1
             beginning_epoch = 0
         else:
-            list_epochs.append([beginning_epoch, i-1, "N", 0])#by default, every epoch is noted "N" for "not a quarter turn"
+            run_epochs.append([beginning_epoch, i-1, "N", 0])#by default, every epoch is noted "N" for "not a quarter turn"
             beginning_epoch = 0
 
 
     if beginning_epoch == 0:
         pass #once the loop is ended check if there is a suitable epoch in memory
-    elif list_epochs != [] and (time[beginning_epoch] - time[list_epochs[-1][1]] < MINIMAL_DURATION_STOP): #if the interval with the previous epoch was too short, change its end to the end of this epoch
-        list_epochs[-1][1] = i-1
+    elif run_epochs != [] and (trajectory_times[beginning_epoch] - trajectory_times[run_epochs[-1][1]] < Pause_min_duration): #if the interval with the previous epoch was too short, change its end to the end of this epoch
+        run_epochs[-1][1] = i-1
         beginning_epoch = 0
-    elif (time[speed_size - 1] - time[beginning_epoch]) < MINIMAL_DURATION_EPOCH:
+    elif (trajectory_times[len(trajectory_speeds) - 1] - trajectory_times[beginning_epoch]) < Run_min_duration:
         pass
     else:
-        list_epochs.append([beginning_epoch, speed_size - 1, "N", 0]) #the N at the end is for "not a quarter turn". every epoch is not a quarter turn until proven otherwise
+        run_epochs.append([beginning_epoch, len(trajectory_speeds) - 1, "N", 0]) #the N at the end is for "not a quarter turn". every epoch is not a quarter turn until proven otherwise
 
-    size_len_epoch = len(list_epochs) # Number of epochs in the list
+    run_epochs_number = len(run_epochs) # Number of epochs in the list
     a = 0
     
     # Check if the epoch is long enough
-    while a < size_len_epoch:
-        if (time[list_epochs[a][1]] - time[list_epochs[a][0]]) < MINIMAL_DURATION_EPOCH:
-            _ = list_epochs.pop(a) #if the epoch is too short to be considerded, discard it
-            size_len_epoch -= 1
+    while a < run_epochs_number:
+        if (trajectory_times[run_epochs[a][1]] - trajectory_times[run_epochs[a][0]]) < Run_min_duration:
+            _ = run_epochs.pop(a) #if the epoch is too short to be considerded, discard it
+            run_epochs_number -= 1
         else:
             a+= 1
 
-    for i in range(len(list_epochs)):
-        current_point = list_epochs[i][0] #get the current beginning of the epoch
-        acceleration = (speed_values[current_point + 1] - speed_values[current_point]) / (time[current_point + 1] - time[current_point])
+    for i in range(len(run_epochs)):
+        current_point = run_epochs[i][0] #get the current beginning of the epoch
+        acceleration = (trajectory_speeds[current_point + 1] - trajectory_speeds[current_point]) / (trajectory_times[current_point + 1] - trajectory_times[current_point])
         try:
-            previous_acceleration = (speed_values[current_point ] - speed_values[current_point - 1]) / (time[current_point] - time[current_point - 1])
+            previous_acceleration = (trajectory_speeds[current_point ] - trajectory_speeds[current_point - 1]) / (trajectory_times[current_point] - trajectory_times[current_point - 1])
         except:  # FIX ME: that's a bad practice to catch all exceptions
             previous_acceleration = -1  # if this is the first point, there is no previous acceleration, so don't go in the loop
 
         while previous_acceleration > (0.4 * acceleration) and previous_acceleration > 0:  # continue to go further until we reach the end of the acceleration
             current_point = current_point - 1
             try:
-                previous_acceleration = (speed_values[current_point ] - speed_values[current_point - 1]) / (time[current_point] - time[current_point - 1])
+                previous_acceleration = (trajectory_speeds[current_point ] - trajectory_speeds[current_point - 1]) / (trajectory_times[current_point] - trajectory_times[current_point - 1])
             except:  # FIX ME: that's a bad practice to catch all exceptions
                 previous_acceleration = -1#if this is the first point, there is no previous acceleration, so break out of the loop
-        list_epochs[i][0] = current_point#change the beginning of the epoch for the beginning of the acceleration
+        run_epochs[i][0] = current_point#change the beginning of the epoch for the beginning of the acceleration
 
-        current_point = list_epochs[i][1] #get the current end of the epoch
+        current_point = run_epochs[i][1] #get the current end of the epoch
         try:
-            acceleration = (speed_values[current_point + 1] - speed_values[current_point]) / (time[current_point + 1] - time[current_point])#calculate the acceleration of the segment just AFTER the end of the epoch
+            acceleration = (trajectory_speeds[current_point + 1] - trajectory_speeds[current_point]) / (trajectory_times[current_point + 1] - trajectory_times[current_point])#calculate the acceleration of the segment just AFTER the end of the epoch
         except:
             acceleration = 1
-        previous_acceleration = (speed_values[current_point ] - speed_values[current_point - 1]) / (time[current_point] - time[current_point - 1])#calculate the acceleration of the segment just BEFORE the end of the epoch
+        previous_acceleration = (trajectory_speeds[current_point ] - trajectory_speeds[current_point - 1]) / (trajectory_times[current_point] - trajectory_times[current_point - 1])#calculate the acceleration of the segment just BEFORE the end of the epoch
 
         while acceleration < (0.4 * previous_acceleration)  and acceleration < 0:
             current_point = current_point + 1
             try:
-                acceleration = (speed_values[current_point + 1] - speed_values[current_point]) / (time[current_point + 1] - time[current_point])
+                acceleration = (trajectory_speeds[current_point + 1] - trajectory_speeds[current_point]) / (trajectory_times[current_point + 1] - trajectory_times[current_point])
             except:
                 acceleration = 1
         #change the end of the epoch for the end of the decceleration
-        list_epochs[i][1] = current_point
-    return list_epochs
+        run_epochs[i][1] = current_point
+    return run_epochs
 
 ################################ 
 
@@ -302,7 +380,7 @@ def analysis_trajectory(time, xgauss, ygauss,
                         cut_speed, ecart_angle, RESOLUTION, MIN_DURATION_STOP, MIN_DURATION_EPOCH):
     """ Arguments =
     time, xgauss, ygauss:the time of each frame in the TXY csv file and the smoothen positions;
-    collection_trapeze:dictionnary with an entry for each patch containing each a dictionnary on their side containing the angles coordinate of the detection trapeze;
+    collection_trapeze:dictionnary with an entry for each tower containing each a dictionnary on their side containing the angles coordinate of the detection trapeze;
     turns_df the dataframe containing the informations of the turnsinfo csv corresponding to the sequence;
     cut_speed: speed under which the mouse is considerd to not be moving;
     ecart_angle: ecart between two frame used to calculate the angle, speed and acceleration;
@@ -334,8 +412,8 @@ def analysis_trajectory(time, xgauss, ygauss,
     speeds_gauss = np.divide(distances_gauss,timebeweenframe)
     # Get the speed in cm/s and add a speed of 0 at the beginning to keep the same data size
     speeds_gauss = speeds_gauss * 100
-    list_epochs = cut_in_epoch_speed(cut_off_speed= cut_speed, speed_values = speeds_gauss, time = time, MINIMAL_DURATION_STOP= MIN_DURATION_STOP,
-                                     MINIMAL_DURATION_EPOCH= MIN_DURATION_EPOCH) # Calculate the epochs with the true cut_off speed and store it
+    run_epochs = define_run_epochs(cut_off_speed= cut_speed, trajectory_speeds = speeds_gauss, time = time, Pause_min_duration= MIN_DURATION_STOP,
+                                     Run_min_duration= MIN_DURATION_EPOCH) # Calculate the epochs with the true cut_off speed and store it
 
     # Calculate the orientation with the chosen value and get the changed epochs
     angles = calcul_angle(ycoordinate= ygauss, ecart= ecart_angle, xcoordinate= xgauss)
@@ -350,9 +428,9 @@ def analysis_trajectory(time, xgauss, ygauss,
     #Advance analysis = identify the quarter turns, the trajectory towards and between objetcs
     #format of a quarter turn indicator: [0] = 'Q' for quarter turn     [1] = 'k'/'w' for counterclockwise / clockwise
     # [2] = 'O'/'E'/'B'/'G'/'H' for wrong object /extra turn / bad direction / Good / double wrong        
-    # [3-4] = patch
+    # [3-4] = tower
 
-    # Format for between objects indicator: [0] = 'B' for between object    [1 - 2] = previous patch    [3-4] = current patch
+    # Format for between objects indicator: [0] = 'B' for between object    [1 - 2] = previous tower    [3-4] = current tower
     # [5] = 'n'/'r' for non-rewarded/ rewarded (if multiple turns are done in the movement, only the last one is considered)
     in_an_epoch_but_no_quarter = [] # Will contain a list under the form [time, corresponding epoch, bool rewarded]
 
@@ -361,16 +439,16 @@ def analysis_trajectory(time, xgauss, ygauss,
         not_past_nor_found = True
         i = 0
         turn_time = turns_df.loc[turns_df.index[aprime], "time"]    #turns_df.iat[aprime , 0]
-        if time[list_epochs[-1][1]] < turn_time: # If the last epoch end before the recorded turn, discard the turn
+        if time[run_epochs[-1][1]] < turn_time: # If the last epoch end before the recorded turn, discard the turn
             not_past_nor_found = False
 
         while not_past_nor_found:
-            if time[list_epochs[i][1]] < turn_time:
+            if time[run_epochs[i][1]] < turn_time:
                 # If the end of the epoch is before the time of the turn, the epoch does not contain the turn so try the next epoch
                 i+=1
 
             # If we reach a point where the beginning of the epoch is after the turn, then the turn was not in an epoch
-            elif time[list_epochs[i][0]] > turn_time:
+            elif time[run_epochs[i][0]] > turn_time:
                 not_past_nor_found = False
 
             # If the time is in this epoch, test if this is a true QT
@@ -378,15 +456,15 @@ def analysis_trajectory(time, xgauss, ygauss,
                     # Check if the beginning of the epoch (movement) is in the polygon it's supposed to                                                                         #check if the beginning of the epoch (movement) is in the polygon it's supposed to
 
                 # Set the value of epoch[3] to the nb of rewards the animal had at the beginning of the movement
-                list_epochs[i][3] = turns_df.loc[turns_df.index[aprime - 1], "totalnberOfRewards"] #turns_df.iat[aprime -1, 14]
+                run_epochs[i][3] = turns_df.loc[turns_df.index[aprime - 1], "totalnberOfRewards"] #turns_df.iat[aprime -1, 14]
 
-                if points_in_polygon(polygon = collection_trapeze[turns_df.loc[turns_df.index[aprime], "currentPatch"]][turns_df.loc[turns_df.index[aprime], "previousTrapeze"]], pts = [[xgauss[list_epochs[i][0]], ygauss[list_epochs[i][0]]]]) and points_in_polygon(polygon = collection_trapeze[turns_df.loc[turns_df.index[aprime], "currentPatch"]][turns_df.loc[turns_df.index[aprime], "currentTrapeze"]], pts= [[xgauss[list_epochs[i][1]], ygauss[list_epochs[i][1]]]]):
+                if mouse_in_trapeze(polygon = collection_trapeze[turns_df.loc[turns_df.index[aprime], "currentTower"]][turns_df.loc[turns_df.index[aprime], "previousTrapeze"]], pts = [[xgauss[run_epochs[i][0]], ygauss[run_epochs[i][0]]]]) and mouse_in_trapeze(polygon = collection_trapeze[turns_df.loc[turns_df.index[aprime], "currentTower"]][turns_df.loc[turns_df.index[aprime], "currentTrapeze"]], pts= [[xgauss[run_epochs[i][1]], ygauss[run_epochs[i][1]]]]):
                     
-                    # Current patch is obtained from a number between 0 and 3 indicating in which patch it is (True = 1, False = 0)
-                    current_patch = whichPatch((xgauss[list_epochs[i][0]] < RESOLUTION[0] / 2) * 1 + (ygauss[list_epochs[i][0]] < RESOLUTION[1] / 2) * 2)
+                    # Current tower is obtained from a number between 0 and 3 indicating in which tower it is (True = 1, False = 0)
+                    current_tower = whichTower((xgauss[run_epochs[i][0]] < RESOLUTION[0] / 2) * 1 + (ygauss[run_epochs[i][0]] < RESOLUTION[1] / 2) * 2)
 
-                    # Check if the mouse does not go to another patch. If it does, it is not a QT
-                    if stay_in_patch(current_patch, xgauss[list_epochs[i][0]:list_epochs[i][1] + 1], ygauss[list_epochs[i][0]: list_epochs[i][1] + 1], RESOLUTION):
+                    # Check if the mouse does not go to another tower. If it does, it is not a QT
+                    if stay_in_tower(current_tower, xgauss[run_epochs[i][0]:run_epochs[i][1] + 1], ygauss[run_epochs[i][0]: run_epochs[i][1] + 1], RESOLUTION):
                         if int(turns_df.iat[aprime, 7]) == 90:
                             # Add a marker depending of the type of turn
                             turn_direction = "k" # Counterclockwise
@@ -413,7 +491,7 @@ def analysis_trajectory(time, xgauss, ygauss,
                         else:
                             reward = "N"
 
-                        list_epochs[i][2] = "Q" + turn_direction + type_of_turn + current_patch + reward # Q = quarter turn
+                        run_epochs[i][2] = "Q" + turn_direction + type_of_turn + current_tower + reward # Q = quarter turn
                     else:
                         in_an_epoch_but_no_quarter += [(turn_time, i, turns_df.loc[turns_df.index[aprime], "Rewarded"])]
                 else:
@@ -421,34 +499,34 @@ def analysis_trajectory(time, xgauss, ygauss,
 
                 not_past_nor_found = False # The correct epoch was found, no need to continue
 
-    for a in range(len(list_epochs)):
-        if list_epochs[a][2][0] == "N":  # If the epoch is not a QT, look at if it can be either a movement between objects or a movement towards an object
-            current_patch = whichPatch((xgauss[list_epochs[a][1]] < RESOLUTION[0] / 2) * 1 + (ygauss[list_epochs[a][1]] < RESOLUTION[1] / 2) * 2)
+    for a in range(len(run_epochs)):
+        if run_epochs[a][2][0] == "N":  # If the epoch is not a QT, look at if it can be either a movement between objects or a movement towards an object
+            current_tower = whichTower((xgauss[run_epochs[a][1]] < RESOLUTION[0] / 2) * 1 + (ygauss[run_epochs[a][1]] < RESOLUTION[1] / 2) * 2)
 
             # If the epoch end in a trapeze it's either a movement towards an object or a movement between objects, or a very small exploration epoch
-            if is_in_a_goal(xgauss[list_epochs[a][1]], ygauss[list_epochs[a][1]], current_patch, collection_trapeze):
-                previous_patch = whichPatch((xgauss[list_epochs[a][0]] < RESOLUTION[0] / 2) * 1 + (ygauss[list_epochs[a][0]] < RESOLUTION[0] / 2) * 2)
+            if is_in_a_goal(xgauss[run_epochs[a][1]], ygauss[run_epochs[a][1]], current_tower, collection_trapeze):
+                previous_tower = whichTower((xgauss[run_epochs[a][0]] < RESOLUTION[0] / 2) * 1 + (ygauss[run_epochs[a][0]] < RESOLUTION[0] / 2) * 2)
 
                 # Check if the beginning of the epoch was also in a trapeze
-                if is_in_a_goal(xgauss[list_epochs[a][0]], ygauss[list_epochs[a][0]], previous_patch, collection_trapeze):
-                    if current_patch == previous_patch:
+                if is_in_a_goal(xgauss[run_epochs[a][0]], ygauss[run_epochs[a][0]], previous_tower, collection_trapeze):
+                    if current_tower == previous_tower:
 
                         # We consider two possibilities in this case:
                         # - either this is a small exploration trajectory or
-                        # - the animal move to multiple objects while trying to find the reward and end in the same patch in a between object trajectory
-                        if not stay_in_patch(current_patch, xgauss[list_epochs[a][0]:list_epochs[a][1] + 1], ygauss[list_epochs[a][0]:list_epochs[a][1] + 1], RESOLUTION):
+                        # - the animal move to multiple objects while trying to find the reward and end in the same tower in a between object trajectory
+                        if not stay_in_tower(current_tower, xgauss[run_epochs[a][0]:run_epochs[a][1] + 1], ygauss[run_epochs[a][0]:run_epochs[a][1] + 1], RESOLUTION):
 
                             # Then it's a between objects trajectory
-                            list_epochs[a][2] = "B" + previous_patch + current_patch + 'n' # n for n rewards
+                            run_epochs[a][2] = "B" + previous_tower + current_tower + 'n' # n for n rewards
                         # Else nothing, the exploratory trajectory are marked by an 'N' Which is the default
-                    # If previous_patch and current patch are different, it's a trajectory between objects
+                    # If previous_tower and current tower are different, it's a trajectory between objects
                     else:
-                        list_epochs[a][2] = "B" + previous_patch + current_patch + 'n' # n for no rewards
+                        run_epochs[a][2] = "B" + previous_tower + current_tower + 'n' # n for no rewards
                 # If the beginning of the epoch is not in a goal, it is considered a trajectory toward an object
                 else:
-                    list_epochs[a][2] = "T" + current_patch
+                    run_epochs[a][2] = "T" + current_tower
 
-    return distances_gauss, speeds_gauss, time_average, acceleration, angles, angular_speed, list_epochs
+    return distances_gauss, speeds_gauss, time_average, acceleration, angles, angular_speed, run_epochs
 
 
 
@@ -513,9 +591,9 @@ def process_session(mouseFolder_Path, session, process=False):
         ygauss = smooth(yposition, TRUE_SIGMA) # Smoothes the positions with true sigma
 
         # Does the actual analysis. The remaining part consists in accessing the pertinent informations and plotting them
-        distances, speed, time_average, acceleration, angles, angular_speed, list_epochs = analysis_trajectory(
+        distances, speed, time_average, acceleration, angles, angular_speed, run_epochs = analysis_trajectory(
             time, xgauss, ygauss, collection_trapeze, turns_df, TRUE_CUT_SPEED, TRUE_ECART_ANGLE, RESOLUTION,
-            MIN_DURATION_EPOCH=MINIMAL_DURATION_EPOCH, MIN_DURATION_STOP=MINIMAL_DURATION_STOP)
+            MIN_DURATION_EPOCH=Run_min_duration, MIN_DURATION_STOP=Pause_min_duration)
 
         
        
@@ -526,23 +604,23 @@ def process_session(mouseFolder_Path, session, process=False):
         
         # Prepare lists of epochs corresponding to diffrent type of behavior
         stops_type = {"rewarded":[], "unrewarded":[]}
-        for i in range(len(list_epochs) - 1):
-            if list_epochs[i][2][0] == "Q": # If it's a QT
-                if list_epochs[i][2][2] == "G": # If this is a good turn and thus a rewarded QT
-                    stops_type["rewarded"].append([list_epochs[i][1], list_epochs[i + 1][0]])
+        for i in range(len(run_epochs) - 1):
+            if run_epochs[i][2][0] == "Q": # If it's a QT
+                if run_epochs[i][2][2] == "G": # If this is a good turn and thus a rewarded QT
+                    stops_type["rewarded"].append([run_epochs[i][1], run_epochs[i + 1][0]])
                 else: # Then the QT was not rewarded
-                    stops_type["unrewarded"].append([list_epochs[i][1], list_epochs[i + 1][0]]) 
-            #elif list_epochs[i][2][0] == "B": #If this is a between objects
-            #    if list_epochs[i][2][5] == 'r': #If the trajectory was rewarded
-            #        stops_type["rewarded"].append([list_epochs[i][1], list_epochs[i + 1][0]])
+                    stops_type["unrewarded"].append([run_epochs[i][1], run_epochs[i + 1][0]]) 
+            #elif run_epochs[i][2][0] == "B": #If this is a between objects
+            #    if run_epochs[i][2][5] == 'r': #If the trajectory was rewarded
+            #        stops_type["rewarded"].append([run_epochs[i][1], run_epochs[i + 1][0]])
             #    else: #Then the between objects was unrewarded
-            #        stops_type["unrewarded"].append([list_epochs[i][1], list_epochs[i + 1][0]])
+            #        stops_type["unrewarded"].append([run_epochs[i][1], run_epochs[i + 1][0]])
 
-        list_quarter_turn = [epoch for epoch in list_epochs if epoch[2][0] == "Q"] # All QT
-        list_between_objects = [epoch for epoch in list_epochs if epoch[2][0] == "B"] # All trajectories between objects
-        list_toward_object = [epoch for epoch in list_epochs if epoch[2][0] == "T"] # All trajectories towards objects
-        list_movement_not_quarter = [epoch for epoch in list_epochs if epoch[2][0] == "N"] # All other trajectories
-        list_of_stops = [[list_epochs[a - 1][1 ] + 1, list_epochs[a][0] - 1] for a in range(1, len(list_epochs))]
+        list_quarter_turn = [epoch for epoch in run_epochs if epoch[2][0] == "Q"] # All QT
+        list_between_objects = [epoch for epoch in run_epochs if epoch[2][0] == "B"] # All trajectories between objects
+        list_toward_object = [epoch for epoch in run_epochs if epoch[2][0] == "T"] # All trajectories towards objects
+        list_movement_not_quarter = [epoch for epoch in run_epochs if epoch[2][0] == "N"] # All other trajectories
+        list_of_stops = [[run_epochs[a - 1][1 ] + 1, run_epochs[a][0] - 1] for a in range(1, len(run_epochs))]
 
         # Creates a list for each type of QT
         rewarded = [epoch for epoch in list_quarter_turn if epoch[2][2] == 'G']
@@ -554,8 +632,8 @@ def process_session(mouseFolder_Path, session, process=False):
         depleting = [epoch for epoch in list_quarter_turn if epoch[2][2] == 'D'] # Added
         timeout = [epoch for epoch in list_quarter_turn if epoch[2][2] == 'T'] # Added
 
-        #David: I feel that the list_epochs is done. Lets try to pickleit
-        pickle_data(data=list_epochs, animal_folder = mouseFolder_Path, session=session,
+        #David: I feel that the run_epochs is done. Lets try to pickleit
+        pickle_data(data=run_epochs, animal_folder = mouseFolder_Path, session=session,
                      filename = 'all_running_epochs.pkl')
         
         #DAvid. Using the list_quarter_turn we can get the number of consecutive QT done at each visit of a tower
@@ -580,11 +658,11 @@ def process_session(mouseFolder_Path, session, process=False):
                 turns_in_QT = turns_df[(turns_df['time'] >= quarter_turn['time'].iloc[0]) & (turns_df['time'] <= quarter_turn['time'].iloc[-1])]
                 
                 if not turns_in_QT.empty:
-                    current_patch = turns_in_QT.iloc[0]['currentPatch']
-                    if current_patch != current_tower:
+                    current_tower = turns_in_QT.iloc[0]['currentTower']
+                    if current_tower != current_tower:
                         if current_tower is not None:
                             consecutive_quarter_turns.append([start_time, quarter_turn['time'].iloc[-1], current_tower, count])
-                        current_tower = current_patch
+                        current_tower = current_tower
                         start_time = quarter_turn['time'].iloc[0]
                         count = 1
                     else:
@@ -611,8 +689,8 @@ def process_session(mouseFolder_Path, session, process=False):
         clock_turn = [epoch for epoch in list_quarter_turn if epoch[2][1] == "w"]
         exploring = [epoch for epoch in list_quarter_turn if epoch[2][2] == 'X']
 
-        when_reward = [[turns_df.loc[a, "time"], turns_df.loc[a, "currentPatch"]] for a in turns_df.index if turns_df.loc[a, "Rewarded"]]
-        when_no_reward = [[turns_df.loc[a, "time"], turns_df.loc[a, "currentPatch"]] for a in turns_df.index if not turns_df.loc[a, "Rewarded"]]
+        when_reward = [[turns_df.loc[a, "time"], turns_df.loc[a, "currentTower"]] for a in turns_df.index if turns_df.loc[a, "Rewarded"]]
+        when_no_reward = [[turns_df.loc[a, "time"], turns_df.loc[a, "currentTower"]] for a in turns_df.index if not turns_df.loc[a, "Rewarded"]]
         
         ############################################
 
@@ -692,7 +770,7 @@ def process_session(mouseFolder_Path, session, process=False):
         # row 1  ~1sec
         plot_session_trajectory(xposition, yposition, ax=ax_traj)
         plot_session_speed(xposition, yposition, time, ax=ax_speed)
-        plot_angular_speed(angular_speed, list_epochs, ax=ax_angular_speed)
+        plot_angular_speed(angular_speed, run_epochs, ax=ax_angular_speed)
         figure_qt_number(turns_df, ax=ax_qt_number)
 
         # row 2:5, cols 0:4  ~5sec
@@ -721,7 +799,7 @@ def process_session(mouseFolder_Path, session, process=False):
                             mouseFolder_Path, session, axs=[ax_cumu_qt, ax_rewarded_qt])
 
         # row 6  ~1sec
-        figure_coloreddot(turns_df, time, list_epochs, list_quarter_turn, time_average, list_between_objects, ax=ax_colored_dot)
+        figure_coloreddot(turns_df, time, run_epochs, list_quarter_turn, time_average, list_between_objects, ax=ax_colored_dot)
 
         # Save the figure
         figpath = mouseFolder_Path+os.sep+session+os.sep+'Figure'
@@ -731,7 +809,7 @@ def process_session(mouseFolder_Path, session, process=False):
                     edgecolor='none', bbox_inches='tight', format="png", dpi=180)
 
         plt.close('all')
-    #return list_epochs
+    #return run_epochs
 
 def load_data(mouseFolder_Path, session):
     try:
@@ -819,7 +897,7 @@ def unpickle_data(path : Any, filename : str) -> Any :
         return None
 
 #Raster plot figure
-def figure_coloreddot(turns_df, time, list_epochs, list_quarter_turn, time_average, list_between_objects, ax=None):
+def figure_coloreddot(turns_df, time, run_epochs, list_quarter_turn, time_average, list_between_objects, ax=None):
     if ax is None:
         _, ax = plt.subplots(figsize=(60, 5))
 
@@ -827,8 +905,8 @@ def figure_coloreddot(turns_df, time, list_epochs, list_quarter_turn, time_avera
     serie = 0 #Will indicate if we are in a serie
     current_quarter_turn = -1
 
-    when_reward = [[turns_df.loc[a, "time"], turns_df.loc[a, "currentPatch"]] for a in turns_df.index if turns_df.loc[a, "Rewarded"]]
-    when_no_reward = [[turns_df.loc[a, "time"], turns_df.loc[a, "currentPatch"]] for a in turns_df.index if not turns_df.loc[a, "Rewarded"]]
+    when_reward = [[turns_df.loc[a, "time"], turns_df.loc[a, "currentTower"]] for a in turns_df.index if turns_df.loc[a, "Rewarded"]]
+    when_no_reward = [[turns_df.loc[a, "time"], turns_df.loc[a, "currentTower"]] for a in turns_df.index if not turns_df.loc[a, "Rewarded"]]
 
     # Creates a list for each type of QT
     rewarded = [epoch for epoch in list_quarter_turn if epoch[2][2] == 'G']
@@ -840,7 +918,7 @@ def figure_coloreddot(turns_df, time, list_epochs, list_quarter_turn, time_avera
     timeout_turn = [epoch for epoch in list_quarter_turn if epoch[2][2] == 'T']
     depl_turn = [epoch for epoch in list_quarter_turn if epoch[2][2] == 'D']
 
-    for epoch in list_epochs:
+    for epoch in run_epochs:
         if epoch[2][0] == "Q":
             # add nb of the current QT after so it still indicate the last one of the serie when added
             current_quarter_turn += 1
@@ -860,15 +938,15 @@ def figure_coloreddot(turns_df, time, list_epochs, list_quarter_turn, time_avera
         elif serie == 1:
             serie = 0
 
-    ax.plot([time_average[i[0]] if i[2][0] == "Q"  else time_average[i[1]] for i in list_epochs if i[2][0] == "Q" or i[2][0] == "B"],
-            [coordinate_patch(i[2][3:5]) for i in list_epochs if i[2][0] == "Q" or i[2][0] == "B"],
+    ax.plot([time_average[i[0]] if i[2][0] == "Q"  else time_average[i[1]] for i in run_epochs if i[2][0] == "Q" or i[2][0] == "B"],
+            [coordinate_tower(i[2][3:5]) for i in run_epochs if i[2][0] == "Q" or i[2][0] == "B"],
             c= "palegoldenrod", lw = 0.9, zorder = 1)
 
     # Plots the trajectory between objects
     if len(list_between_objects) != 0:
         # change the "between objects with/without reward" par bo rewarded or unrewarded
         ax.scatter([time_average[i[1]] for i in list_between_objects],
-                   [coordinate_patch(i[2][3:5]) for i in list_between_objects],
+                   [coordinate_tower(i[2][3:5]) for i in list_between_objects],
                    c="turquoise", label = "between object ", marker= "x", s=3, zorder = 2)
     else:
         pass
@@ -878,7 +956,7 @@ def figure_coloreddot(turns_df, time, list_epochs, list_quarter_turn, time_avera
         current_list = [when_reward, when_no_reward][a]
         if len(current_list) != 0:
             ax.scatter([i[0] for i in current_list],
-                       [coordinate_patch(i[1]) + 0.1 for i in current_list],
+                       [coordinate_tower(i[1]) + 0.1 for i in current_list],
                         c=colors[a], label=[" ", "no "][a] + "reward", s=0.08 , zorder=2)
         else:
             pass
@@ -891,7 +969,7 @@ def figure_coloreddot(turns_df, time, list_epochs, list_quarter_turn, time_avera
                         bad_object_direction, bad_direction,extra_turn][a]
         if len(current_list) != 0:
             ax.scatter([time_average[i[0]] for i in current_list],
-                       [coordinate_patch(i[2][3:5]) for i in current_list],
+                       [coordinate_tower(i[2][3:5]) for i in current_list],
                        c=colors[a], label=["gogd", "depleting", "timeout",
                                            "bogd", "bobg", "gobd", "extra"][a], 
                                            marker="|", s=10, zorder=3)
@@ -900,7 +978,7 @@ def figure_coloreddot(turns_df, time, list_epochs, list_quarter_turn, time_avera
     if REMAINING_REWARDS:
         for a in range(len(list_number_reward)):
             ax.text(time_average[list_quarter_turn[list_number_reward[a][0]][0]] - 3,
-                    coordinate_patch(list_quarter_turn[list_number_reward[a][0]][2][3:5])-0.05,
+                    coordinate_tower(list_quarter_turn[list_number_reward[a][0]][2][3:5])-0.05,
                     s=str(list_number_reward[a][1]))
 
     ax.set_yticks(ticks=[1, 2, 3, 4], labels=['NE', 'NW', 'SE', 'SW'])
@@ -916,10 +994,10 @@ def figure_trajectories(traj_df, current_movement, xgauss, ygauss, speed, angula
     else:
         ax1, ax2, ax3, ax4 = axs
 
-    for patch in collection_trapeze:  # plot the trapeze around the object
-        for trapeze in collection_trapeze[patch]:
-            shape = Polygon(np.array(collection_trapeze[patch][trapeze]), color="lemonchiffon")
-            ax1.add_patch(shape)
+    for tower in collection_trapeze:  # plot the trapeze around the object
+        for trapeze in collection_trapeze[tower]:
+            shape = Polygon(np.array(collection_trapeze[tower][trapeze]), color="lemonchiffon")
+            ax1.add_tower(shape)
         for u in current_movement:  # plot each individual trajectory of the current category
             colors = plt.cm.rainbow(np.random.random())
             if len(u) != 0:
@@ -994,10 +1072,10 @@ def figure_stops(traj_df, current_movement, xgauss, ygauss, time_average, stops_
     else:
         ax1, ax2, ax3, ax4 = axs
 
-    for patch in collection_trapeze: # plot the trapeze around the object
-        for trapeze in collection_trapeze[patch]:
-            shape = Polygon(np.array(collection_trapeze[patch][trapeze]), color="lemonchiffon")
-            ax1.add_patch(shape)
+    for tower in collection_trapeze: # plot the trapeze around the object
+        for trapeze in collection_trapeze[tower]:
+            shape = Polygon(np.array(collection_trapeze[tower][trapeze]), color="lemonchiffon")
+            ax1.add_tower(shape)
         for u in current_movement: # plot each individual trajectory of the current category
             colors = plt.cm.rainbow(np.random.random())
             if len(u) != 0:
@@ -1180,13 +1258,13 @@ def figure_cumul_qturns(list_quarter_turn, rewarded, unrewarded, time_average, a
     ax2.set_xlabel("Time (s)")
     ax2.legend()
 
-def plot_angular_speed(angular_speed, list_epochs, ax=None):
+def plot_angular_speed(angular_speed, run_epochs, ax=None):
 
     #########################################
     # Plot the angular speed for all movements
     if ax is None:
         _, ax = plt.subplots(1, 1, figsize=(10, 10))
-    angle_speedy = [angular_speed[i] for u in list_epochs for i in range(u[0], u[1]+1)]
+    angle_speedy = [angular_speed[i] for u in run_epochs for i in range(u[0], u[1]+1)]
     ax.hist(angle_speedy, bins=np.arange(-50, 50, .5), density=True)
     ax.set_title("angular speed")
 
@@ -1221,7 +1299,7 @@ def plot_session_speed(xpositions, ypositions, time, ax=None):
     timebeweenframe = np.diff(time)
     speeds = np.divide(distances, timebeweenframe)
 
-    n_event, binedges, patches = ax.hist(speeds*100, bins=np.arange(0, 100, 100/25),
+    n_event, binedges, toweres = ax.hist(speeds*100, bins=np.arange(0, 100, 100/25),
                                         density=True, facecolor='k', alpha=0.75)
     bincenters = 0.5 * (binedges[1:] + binedges[:-1])
 
@@ -1251,12 +1329,12 @@ def figure_qt_number(traj_df, ax=None):
     bins=np.arange(0, lasturn_time + binsize, binsize)
 
     allturns_time=traj_df['time'].to_numpy()
-    n, bins, patches = ax.hist(allturns_time, bins, density=False,
+    n, bins, toweres = ax.hist(allturns_time, bins, density=False,
                                histtype='step', cumulative=True, label='trapeze changes',
                                color=turnPalette['all turns'])
     turn_times = traj_df.loc[(traj_df['typeOfTurn'] == "gogt") | (traj_df['typeOfTurn'] == "gogd")]
     turn_times=turn_times['time'].to_numpy()
-    n, bins, patches = ax.hist(turn_times, bins, density=False, histtype='step',
+    n, bins, toweres = ax.hist(turn_times, bins, density=False, histtype='step',
                                cumulative=True, label="rewarded",color=turnPalette["gogd"])
 
     ax.legend(loc='upper left')
