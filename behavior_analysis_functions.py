@@ -151,7 +151,7 @@ def whichPatch(number): # TODO: this below seems unnecessary
     else:
         raise ValueError("The number must be between 0 and 3")
 
-############################### TODO: below this function comes too early. 
+############################### TODO: below this function comes too early. Not sure what is does in fact
 
 def search_right_turn(time_start, time_end, turns_df):
     for i in range(len(turns_df)):
@@ -561,7 +561,6 @@ def process_session(mouseFolder_Path, session, process=False):
         #DAvid. Using the list_quarter_turn we can get the number of consecutive QT done at each visit of a tower
         # Function to extract consecutive quarter turns
         # Function to compute consecutive quarter turns
-        # see AnalyseQuarterTurnsPerVisit.ipynb
         def compute_consecutive_quarter_turns(traj_df, list_quarter_turn, turns_df):
             consecutive_quarter_turns = []
             current_tower = None
