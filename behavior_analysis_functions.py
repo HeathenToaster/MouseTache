@@ -49,8 +49,10 @@ def trapezes_from_patch(patch, width):
     coordinates [[Xa, Ya], [Xb, Yb], [Xc, Yc], [Xd, Yd]] for the 4 trapezes.
     
     trapezes_from_patch(SWpatch_coords, 200)
-    """
 
+    WARNING Dav: this functions only work with the coordinates of the patch given below by Alice.  
+    """
+    
     N = [patch[0], patch[1], [patch[1][0]+width, patch[1][1]+width], [patch[0][0]-width, patch[0][1]+width]]
     E = [patch[1], patch[2], [patch[2][0]+width, patch[2][1]-width], [patch[1][0]+width, patch[1][1]+width]]
     S = [patch[2], patch[3], [patch[3][0]-width, patch[3][1]-width], [patch[2][0]+width, patch[2][1]-width]]
