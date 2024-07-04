@@ -201,8 +201,8 @@ def mouse_in_trapeze(polygon, pts):
 REMAINING_REWARDS = False # if true, indicate the number of reward available on an object when the mouse starts to go around
 Pause_min_duration = 0.1 #if a stop is shorter than this, merges the two epochs bordering it
 Run_min_duration = 0.3 #minimal duration of an epoch to be considerd
-TRUE_SIGMA = 1 #the sigma used for the remaining of the analysis for smoothing
-TRUE_CUT_SPEED = 7 # this value is the speed in cm/s. It is used to detect when the animals stop running. 
+smooth_sigma = 1 #the sigma used for the remaining of the analysis for smoothing
+cut_off_speed = 7 # this value is the speed in cm/s. It is used to detect when the animals stop running. 
 TRUE_ECART_ANGLE = 1 #if a change is made, must change timeofframes
 
 ######################################
@@ -366,7 +366,8 @@ def define_run_epochs(cut_off_speed, trajectory_speeds, trajectory_times, Pause_
 
 ################################ 
 
-def calcul_angle(ycoordinate, ecart, xcoordinate):
+def calcul_angle(ycoordinate, ecart, xcoordinate): #TODO ecart is the size of the delta used to compute the direction. should be renamed
+                                                   #this function caclulate the direction more than the angle. shold be reanmed 
     angles = np.array([np.angle(xcoordinate[i]- xcoordinate[i-ecart] + (ycoordinate[i] - ycoordinate[i-ecart]) * 1j , deg= True) for i in range(ecart, len(xcoordinate))])
     angles = np.insert(angles, obj= 0, values= np.zeros(ecart ))#the calcul of angles change the size of the data. To avoid it, add as much time the first value
 
@@ -587,12 +588,12 @@ def process_session(mouseFolder_Path, session, process=False):
         xposition = traj_df['xposition'].to_numpy()
         yposition = traj_df['yposition'].to_numpy()
         yposition = RESOLUTION[1] - yposition # yposition is inverted, puts it back in the right way. DAvid: this is not simply an inversion because resolution is added
-        xgauss = smooth(xposition, TRUE_SIGMA)
-        ygauss = smooth(yposition, TRUE_SIGMA) # Smoothes the positions with true sigma
+        xgauss = smooth(xposition, smooth_sigma)
+        ygauss = smooth(yposition, smooth_sigma) # Smoothes the positions with true sigma
 
         # Does the actual analysis. The remaining part consists in accessing the pertinent informations and plotting them
         distances, speed, time_average, acceleration, angles, angular_speed, run_epochs = analysis_trajectory(
-            time, xgauss, ygauss, collection_trapeze, turns_df, TRUE_CUT_SPEED, TRUE_ECART_ANGLE, RESOLUTION,
+            time, xgauss, ygauss, collection_trapeze, turns_df, cut_off_speed, TRUE_ECART_ANGLE, RESOLUTION,
             MIN_DURATION_EPOCH=Run_min_duration, MIN_DURATION_STOP=Pause_min_duration)
 
         
@@ -1042,7 +1043,7 @@ def figure_trajectories(traj_df, current_movement, xgauss, ygauss, speed, angula
         ax2.hist([0], bins=np.arange(0, 100, 1), density=True)
     ax2.set_xlabel("Speed (cm/s)")
     ax2.set_ylim(0, 0.06)
-    ax2.axvline(TRUE_CUT_SPEED, c='red', lw=0.5)
+    ax2.axvline(cut_off_speed, c='red', lw=0.5)
 
     ######################
     # Plots the angular speed for the type of trajectory
@@ -1174,7 +1175,7 @@ def figure_qturns(speed, angular_speed, list_quarter_turn, time_average, animalf
             axs[1, col].hist([0], bins=np.arange(0, 60, 1), density=True)
         axs[1, col].set_xlabel(f"Speed {direction} (cm/s)")
         axs[1, col].set_ylim(0, 0.07)
-        axs[1, col].axvline(TRUE_CUT_SPEED, c='red', lw=0.5)
+        axs[1, col].axvline(cut_off_speed, c='red', lw=0.5)
 
         #################################
         # Plot the indidual speed profile of every quarter turn
