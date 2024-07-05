@@ -49,8 +49,10 @@ def trapezes_from_patch(patch, width):
     coordinates [[Xa, Ya], [Xb, Yb], [Xc, Yc], [Xd, Yd]] for the 4 trapezes.
     
     trapezes_from_patch(SWpatch_coords, 200)
-    """
 
+    WARNING Dav: this functions only work with the coordinates of the patch given below by Alice.  
+    """
+    
     N = [patch[0], patch[1], [patch[1][0]+width, patch[1][1]+width], [patch[0][0]-width, patch[0][1]+width]]
     E = [patch[1], patch[2], [patch[2][0]+width, patch[2][1]-width], [patch[1][0]+width, patch[1][1]+width]]
     S = [patch[2], patch[3], [patch[3][0]-width, patch[3][1]-width], [patch[2][0]+width, patch[2][1]-width]]
@@ -151,7 +153,7 @@ def whichPatch(number): # TODO: this below seems unnecessary
     else:
         raise ValueError("The number must be between 0 and 3")
 
-############################### TODO: below this function comes too early. 
+############################### TODO: below this function comes too early. Not sure what is does in fact
 
 def search_right_turn(time_start, time_end, turns_df):
     for i in range(len(turns_df)):
@@ -561,7 +563,7 @@ def process_session(mouseFolder_Path, session, process=False):
         #DAvid. Using the list_quarter_turn we can get the number of consecutive QT done at each visit of a tower
         # Function to extract consecutive quarter turns
         # Function to compute consecutive quarter turns
-        # see AnalyseQuarterTurnsPerVisit.ipynb
+        # see AnalyseQuarterTurnsPerVist notebook
         def compute_consecutive_quarter_turns(traj_df, list_quarter_turn, turns_df):
             consecutive_quarter_turns = []
             current_tower = None
