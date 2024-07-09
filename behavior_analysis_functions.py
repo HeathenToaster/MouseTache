@@ -569,15 +569,16 @@ def process_session(mouseFolder_Path, session, process=False):
             current_tower = None
             count = 0
             start_time = None
+            start_index = None
 
             for idx, thisQT in enumerate(list_quarter_turn):
-                start_index, end_index = thisQT[0], thisQT[1]
+                QTstart_index, QTend_index = thisQT[0], thisQT[1]
 
-                if start_index < 0 or end_index >= len(traj_df):
+                if QTstart_index < 0 or QTend_index >= len(traj_df):
                     print(f"Indexes out of bounds for thisQT: {thisQT}")
                     continue
 
-                quarter_turn = traj_df.iloc[start_index:end_index + 1]
+                quarter_turn = traj_df.iloc[QTstart_index:QTend_index + 1]
                 
                 turns_in_QT = turns_df[(turns_df['time'] >= quarter_turn['time'].iloc[0]) & (turns_df['time'] <= quarter_turn['time'].iloc[-1])]
                 
@@ -585,15 +586,16 @@ def process_session(mouseFolder_Path, session, process=False):
                     current_patch = turns_in_QT.iloc[0]['currentPatch']
                     if current_patch != current_tower:
                         if current_tower is not None:
-                            consecutive_quarter_turns.append([start_time, quarter_turn['time'].iloc[-1], current_tower, count])
+                            consecutive_quarter_turns.append([start_time, quarter_turn['time'].iloc[-1], start_index, idx-1, current_tower, count])
                         current_tower = current_patch
                         start_time = quarter_turn['time'].iloc[0]
+                        start_index = idx
                         count = 1
                     else:
                         count += 1
 
             if current_tower is not None:
-                consecutive_quarter_turns.append([start_time, quarter_turn['time'].iloc[-1], current_tower, count])
+                consecutive_quarter_turns.append([start_time, quarter_turn['time'].iloc[-1], start_index, len(list_quarter_turn) - 1, current_tower, count])
 
             return consecutive_quarter_turns
 
