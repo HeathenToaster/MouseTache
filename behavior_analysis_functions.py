@@ -586,7 +586,9 @@ def process_session(mouseFolder_Path, session, process=False):
                     current_patch = turns_in_QT.iloc[0]['currentPatch']
                     if current_patch != current_tower:
                         if current_tower is not None:
-                            consecutive_quarter_turns.append([start_time, quarter_turn['time'].iloc[-1], start_index, idx-1, current_tower, count])
+                            end_time = traj_df.iloc[list_quarter_turn[idx - 1][1]]['time']
+                            end_index = idx - 1
+                            consecutive_quarter_turns.append([start_time, end_time, start_index, end_index, current_tower, count])
                         current_tower = current_patch
                         start_time = quarter_turn['time'].iloc[0]
                         start_index = idx
@@ -595,7 +597,9 @@ def process_session(mouseFolder_Path, session, process=False):
                         count += 1
 
             if current_tower is not None:
-                consecutive_quarter_turns.append([start_time, quarter_turn['time'].iloc[-1], start_index, len(list_quarter_turn) - 1, current_tower, count])
+                end_time = traj_df.iloc[list_quarter_turn[-1][1]]['time']
+                end_index = len(list_quarter_turn)-1
+                consecutive_quarter_turns.append([start_time, end_time, start_index, end_index, current_tower, count])
 
             return consecutive_quarter_turns
 
