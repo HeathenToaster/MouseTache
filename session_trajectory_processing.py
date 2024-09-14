@@ -529,7 +529,7 @@ def process_trajectory(folder_path_mouse_to_process,session_to_process):
     # Save important output in a pickle 
     session_name = session_to_process
     output_pickle_filename = f"{session_name}_basic_processing_output.pickle"
-    output_pickle_filepath = os.path.join(folder_path_mouse_to_process, output_pickle_filename)
+    output_pickle_filepath = os.path.join(folder_path_mouse_to_process,session_to_process,output_pickle_filename)
 
     # Collect all variables into a dictionary
     session_data = {
