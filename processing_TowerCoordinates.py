@@ -1,17 +1,9 @@
-# %% [markdown]
-# ## Overview
-# 
-# This notebook allows to follow all the processing perfromed in the Behavioral_Analysis notebook ( which run behavioral_analysis functions)
-# It sometimes try to clarify some potential complications
-# 
+#This code generate tower and trapze coordinate from default or parameter file
 
-# %%
 import os
-import glob
 import pandas as pd
 import ast
-#import time
-# %%
+
 ######################################
 # maze information
 ######################################
@@ -51,10 +43,6 @@ import ast
 # The video has a dimension of 512 pixeld in width and length trapeze_width and in height. The point 0,0 is the left top corner (openCV)and will need to be changed to left bottom for matplotlib plotting 
 
 
-
-
-# %%
-
 def get_trapeze_and_tower_data(folder_path_mouse_to_process, session_to_process):
 
     """
@@ -84,7 +72,7 @@ def get_trapeze_and_tower_data(folder_path_mouse_to_process, session_to_process)
         # Convert string representations of lists into actual lists
         towers_coordinates = {key: ast.literal_eval(value) for key, value in towers_coordinates.items()}
 
-        print('Coordinates from parameter file:')
+        #print('Coordinates from parameter file:')
     else:
         # Default tower coordinates
         towers_coordinates = {
@@ -93,22 +81,21 @@ def get_trapeze_and_tower_data(folder_path_mouse_to_process, session_to_process)
             "SW": [[109, 351], [181, 351], [181, 410], [109, 410]],
             "SE": [[330, 350], [400, 350], [400, 410], [330, 410]]
         }
-        print('Default towers_coordinates')
-    print(towers_coordinates)
+        #print('Default towers_coordinates')
+    #print(towers_coordinates)
 
     # Check if the trapeze size exists in the CSV file
     if "TrapezeSize" in param_df.columns:
         trapeze_width = param_df["TrapezeSize"].values[0]
-        print('Trapeze width from parameter file:')
+        #print('Trapeze width from parameter file:')
     else:
         trapeze_width = 50  # Default trapeze width
-        print('Default trapeze width')
-    print(trapeze_width)
+        #print('Default trapeze width')
+    #print(trapeze_width)
 
     return trapeze_width, towers_coordinates
 
 
-# %%
 def generate_trapeze_and_tower_coordinates(towers_coordinates, trapeze_width):
     """
     Generates the coordinates of trapezes surrounding towers and converts all coordinates from pixels to centimeters.
@@ -195,17 +182,3 @@ def generate_trapeze_and_tower_coordinates(towers_coordinates, trapeze_width):
     for key in transformed_towers_coordinates}
 
     return all_trapezes_coordinates_cm, towers_coordinates_cm
-
-
-# %%
-#trapeze_width, towers_coordinates = get_trapeze_and_tower_data(folder_path_mouse_to_process, session_to_process)
-
-
-# %%
-#all_trapezes_coordinates_cm, towers_coordinates_cm= generate_trapeze_and_tower_coordinates(towers_coordinates, trapeze_width)
-#print(all_trapezes_coordinates_cm)
-
-# %%
-
-
-

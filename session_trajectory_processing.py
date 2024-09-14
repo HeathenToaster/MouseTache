@@ -434,7 +434,6 @@ def get_run_around_tower_resultssessions(all_epochs):
 
 # ### Get basic  kinematics info for the other type of epochs (othr than runs around tower)
 
-# %%
 def process_other_epochs(all_epochs, time_video_frames, smoothed_positions_cm, all_trapezes_coordinates_cm, distances, speeds):
     """
     Process the other types of epochs ('run_between_towers', 'run_toward_tower', 'exploratory_run', 'immobility')
@@ -498,7 +497,7 @@ def process_trajectory(folder_path_mouse_to_process,session_to_process):
     # Calclulate session duration
     session_duration = time_video_frames[-1] - time_video_frames[0]
     # Print the total time
-    print(f"Total time: {session_duration} s.")
+    print(f"Total time: {session_duration:.2f} s.")
     # Calculate total distance in m
     distance_ran = np.sum(distances)/100  # Convert cm to m
     print(f"The total distance is: {distance_ran:.2f} m")
@@ -514,7 +513,7 @@ def process_trajectory(folder_path_mouse_to_process,session_to_process):
     trapeze_width, towers_coordinates = get_trapeze_and_tower_data(folder_path_mouse_to_process, session_to_process)
 
     all_trapezes_coordinates_cm, towers_coordinates_cm= generate_trapeze_and_tower_coordinates(towers_coordinates, trapeze_width)
-    print(all_trapezes_coordinates_cm)
+    #print(all_trapezes_coordinates_cm)
 
     all_epochs=define_epoch_types(clean_run_epochs, all_trapezes_coordinates_cm, smoothed_positions_cm, time_video_frames, turns_df)
 
