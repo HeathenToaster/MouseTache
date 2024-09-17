@@ -532,6 +532,8 @@ def process_trajectory(folder_path_mouse_to_process,session_to_process,all_trape
 
     # Collect all variables into a dictionary
     session_data = {
+        'timeofframes':time_video_frames,
+        'positions':smoothed_positions_cm,
         'distances': distances,
         'speeds': speeds,
         'angular_speeds': angular_speeds,
