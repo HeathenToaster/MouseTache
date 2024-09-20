@@ -554,7 +554,8 @@ def process_trajectory(folder_path_mouse_to_process,session_to_process,all_trape
         'distance_ran': distance_ran,
         'average_speed': average_speed,
         'all_epochs': all_epochs,
-        'run_around_tower_sessionresult': run_around_tower_sessionresult
+        'run_around_tower_sessionresult': run_around_tower_sessionresult,
+        'all_trapezes_coordinates_cm': all_trapezes_coordinates_cm
     }
 
     # Save the dictionary to a pickle file
