@@ -59,7 +59,7 @@ def trapezes_from_patch(patch, width):
     W = [patch[3], patch[0], [patch[0][0]-width, patch[0][1]+width], [patch[3][0]-width, patch[3][1]-width]]
     return N, E, S, W
 
-def points_in_polygon(polygon, pts):
+def points_in_polygon(polygon, pts): #will be replaced by more efficeint function is_point_in_polygon
     """
     inputs:
     polygon - coordinates of the trapeze [[Xa, Ya], [Xb, Yb], [Xc, Yc], [Xd, Yd]] or N/E/S/W
@@ -166,6 +166,7 @@ def search_right_turn(time_start, time_end, turns_df):
 def is_in_a_goal(xposition, yposition, current_patch, dictionnaire_of_goals):
     """
     for every goal in the list, test if the position is inside using points_in_polygon. return a bool
+    David: what a goal
     """
 
     in_a_trapeze = False
