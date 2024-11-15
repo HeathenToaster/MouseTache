@@ -90,7 +90,7 @@ def get_positions_and_times(trajectory_df):
     return time_video_frames, smoothed_positions_cm
 
 
-# ### Function to compute distance, speed, and angular speed in degrees per second. 
+# ### Function to compute distance, speed, and angular speed in degrees per second.
 # #### We only compute angular speed when mice is moving above a certain speed threshold in cm/s
 
 def compute_distance_speed_angular_speed(smoothed_positions_cm, time_video_frames, speed_threshold=5):
@@ -128,6 +128,12 @@ def compute_distance_speed_angular_speed(smoothed_positions_cm, time_video_frame
 
     # Filter angular speeds to include only those above the threshold
     filtered_angular_speeds = angular_speeds[valid_mask[1:]]
+
+    # Get the times corresponding to filtered angular speeds
+    # filtered_times = time_video_frames[1:][valid_mask[1:]]
+
+    # Create a structured output with angular speeds and corresponding times
+    # angular_speeds_with_times = list(zip(filtered_times, filtered_angular_speeds))
 
     distances= np.insert(distances, 0, 0) # insert a 0 to avoid length error with  time_video_frames. We consider that
                                             # at the first frame the distance is null
