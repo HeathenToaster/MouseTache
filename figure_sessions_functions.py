@@ -1,3 +1,5 @@
+# WORK STILL IN PROGRESS, DONT USE IT NOW
+
 # Import libraries
 
 import os
@@ -8,10 +10,34 @@ import matplotlib.pyplot as plt
 import matplotlib.path as mpath
 import matplotlib.patches as patches
 
+from tqdm import tqdm
 from matplotlib.colors import Normalize
 from matplotlib.colors import LinearSegmentedColormap
 from matplotlib.gridspec import GridSpec, GridSpecFromSubplotSpec
+from matplotlib.backends.backend_pdf import PdfPages
 from processing_TowerCoordinates import *
+
+# Temporary: access to all sessions of one animal to test the code
+
+path_to_data_folder = '/home/david/MyLocalData/Maud/' # Maud work computer
+# path_to_data_folder = 'C:/Users/mauds/Documents' # Maud personal computer
+pattern_of_MOU_Folders = os.path.join(path_to_data_folder, "MOU*")
+
+mice_list: list[str] = ["MOU4551"]
+
+session_list = {}
+for mouse in mice_list:
+    mouse_folder = os.path.join(path_to_data_folder,mouse)
+    session_list[mouse] = sorted([name for name in os.listdir(mouse_folder)
+                           if os.path.isdir(os.path.join(mouse_folder, name))
+                           and name.startswith('MOU')])
+    nb_sessions = len(session_list[mouse])
+
+folder_path_mouse_to_process=os.path.join(path_to_data_folder,mice_list[0])
+# print(folder_path_mouse_to_process)
+
+session_to_process=session_list[mice_list[0]][42]
+# print(session_to_process)
 
 # Functions to plot
 
@@ -35,7 +61,6 @@ def plot_trajectory(ax, X_positions_cm, Y_positions_cm, total_distance, average_
     ax.spines['left'].set_visible(False)
     ax.set_title('Mouse session trajectory', fontsize=17)
 
-    
     # Add total distance and average speed to the graph
     text = f"Total distance: {total_distance:.2f} m\nAverage speed: {average_speed:.2f} cm/s"
     ax.text(0.5, -0.1, text, ha='center', va='bottom', transform=ax.transAxes, fontsize=17)
@@ -68,12 +93,13 @@ def plot_angular_speed_distribution(ax, angular_speeds):
     ax.tick_params(axis='y', labelsize=13)
     ax.tick_params(axis='x', labelsize=13)
 
-def plot_metrics_in_zones(ax, metrics_data, metric_title='Undefined metric', ylabel = 'Undefined y label', ymax=None):
+def plot_metrics_in_zones(ax, metrics_data, metric_title='Undefined metric', 
+                          ylabel = 'Undefined y label', ymax=None):
     """
     Parameters:
         ax : axe in which we add the subplot
         metrics_data (list) : list containing all the metrics you want to plot
-        metric_title (str) : used to set the title of the graph 
+        metric_title (str) : used to set the title of the graph
         ylabel (str) : title of the y axis
         ymax : max y coordinate
 
@@ -91,13 +117,21 @@ def plot_metrics_in_zones(ax, metrics_data, metric_title='Undefined metric', yla
     ax.set_ylabel(ylabel, labelpad=10, fontsize=14)
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
-    if ymax == None:
+    if ymax is None:
         ax.set_ylim(0,max(metrics_data)*1.1)
     else:
         ax.set_ylim(0, ymax)
 
-def plot_ratios_in_zones(ax, ratios_data, title_ratio = 'Undefined title', xlabel = 'Undefined label', ymax=None):
-    
+def plot_ratios_in_zones(
+        ax: any,
+        ratios_data: any,
+        title_ratio: str = 'Undefined title',
+        xlabel: str = 'Undefined label',
+        ymax: any = None
+    ) -> None :
+
+    "Function to plot ratios per zone"
+
     # Plot the trapeze/border ratios for time and distance
     ax.bar(['Time', 'Distance'], ratios_data, color=['purple', 'orange'])
     ax.tick_params(axis='x', labelsize=13)
@@ -107,12 +141,18 @@ def plot_ratios_in_zones(ax, ratios_data, title_ratio = 'Undefined title', xlabe
     ax.set_ylabel('Ratios', labelpad=10, fontsize=14)
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
-    if ymax == None:
+
+    if ymax is None:
         ax.set_ylim(0,max(ratios_data)*1.1)
     else:
         ax.set_ylim(0, ymax)
 
-def plot_cumulative_runs(ax, runs, legend_label='Run type', color='orange', ymax=None):
+def plot_cumulative_runs(
+        ax: any,
+        runs: any,
+        legend_label: str ='Run type',
+        color: str = 'orange',
+        ymax: any = None):
 
     # Time extraction
     run_times = np.sort(np.array([run[3]['time'] for run in runs]))
@@ -130,29 +170,37 @@ def plot_cumulative_runs(ax, runs, legend_label='Run type', color='orange', ymax
     ax.legend(fontsize=12, loc='upper left')
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
+    if ymax is not None:
+        ax.set_ylim((0,ymax))
 
-def plot_speed_over_time(ax, traject_time, speeds, run_type, xlim=5.1, set_title=False, title_type = 'run not defined'):
+def plot_speed_over_time(
+        ax: any,
+        timeofframes: any,
+        speeds: any,
+        run_type: any,
+        xlim: float = 5.1,
+        set_title: bool = False,
+        title_type : str = 'run not defined'):
+    
     """
     Trace la vitesse de la souris en fonction du temps pour le type de run spécifié.
     
     Paramètres :
         ax : Axe matplotlib sur lequel dessiner le graphique.
-        traject_time (list) : Temps de la trajectoire.
+        timeofframes (list) : Temps de la trajectoire.
         speeds (list) : Vitesse de la souris.
         runs (list) : Liste des runs pour le type spécifié.
         run_type (str) : Type de run ('between_towers', 'exploratory', 'around_tower').
         color_map (Colormap) : Colormap pour le gradient de couleur.
     """
 
-    # runs = all_epochs[run_type]
-
     norm = Normalize(vmin=0, vmax=len(run_type))
     color_map = plt.cm.copper
-    
+
     for index, run in enumerate(run_type):
         start_index, end_index = run[0][0], run[0][1]
-        adjusted_time = [t - traject_time[start_index] for t in traject_time[start_index:end_index + 1]]
-        
+        adjusted_time = [t - timeofframes[start_index] for t in timeofframes[start_index:end_index + 1]]
+
         # Tracé de la vitesse
         ax.plot(adjusted_time, speeds[start_index:end_index + 1], color=color_map(norm(index)))
 
@@ -160,14 +208,20 @@ def plot_speed_over_time(ax, traject_time, speeds, run_type, xlim=5.1, set_title
     ax.set_xlabel('Time (s)', labelpad=10, fontsize=14)
     ax.set_ylim(0, 80)
     ax.set_xlim(0, xlim)
-    
+
     if set_title:
         ax.set_title(f"Speed profile for {title_type}", pad=10, fontsize=17)
 
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
 
-def plot_cumulative_rewarded_unrewarded(ax, runs_around_tower):
+def plot_cumulative_rewarded_unrewarded(
+        ax: any,
+        runs_around_tower: any):
+
+    """
+    Complete here
+    """
 
     # Create empty lists to store runs
     runs_around_tower_rewarded = []
@@ -197,12 +251,14 @@ def plot_cumulative_rewarded_unrewarded(ax, runs_around_tower):
     ax.set_ylabel('Cumulative number of runs', labelpad=10, fontsize=14)
     ax.tick_params(axis='x', labelsize=13)
     ax.tick_params(axis='y', labelsize=13)
-    # ax.set_title('Cumulatif des runs Rewarded et Unrewarded')
     ax.legend(fontsize=12)
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
 
-def plot_cumulative_CW_CCW(ax, runs_around_tower):
+def plot_cumulative_CW_CCW(
+        ax: any,
+        runs_around_tower: any):
+    
     # Create empty lists to store runs
     runs_around_tower_CW = []
     runs_around_tower_CCW = []
@@ -235,45 +291,53 @@ def plot_cumulative_CW_CCW(ax, runs_around_tower):
     ax.spines['right'].set_visible(False)
     ax.legend(fontsize=12)
 
-def plot_trajectory_type_centered(ax, smoothed_Xpositions, smoothed_Ypositions, run_type, 
-                                  axis_lim=25, direction='None', xlim=30, ylim=30, q=4, line_width=0.5, arrow_width=0.001):
+def plot_trajectory_type_centered(
+        ax: any,
+        smoothed_Xpositions: any,
+        smoothed_Ypositions: any,
+        run_type: any,
+        xlim: int = 30,
+        ylim: int = 30,
+        q: int = 4,
+        line_width: float = 0.5,
+        arrow_width: float = 0.001):
     """
     Trace uniquement la trajectoire, sans cadre ni axes autour de la figure.
     """
     fixed_origin = (0, 0)
-    
+
     for index, run in enumerate(run_type):
         start_index, end_index = run[0][0], run[0][1]
         runtype_epoch_Xpositions = smoothed_Xpositions[start_index:end_index + 1]
         runtype_epoch_Ypositions = smoothed_Ypositions[start_index:end_index + 1]
         numberofpositions = len(runtype_epoch_Xpositions)
         colorgradientforthisrun = custom_cmap(numberofpositions)
-        
+
         start_x, start_y = runtype_epoch_Xpositions[0], runtype_epoch_Ypositions[0]
         translated_Xpositions = [x - start_x + fixed_origin[0] for x in runtype_epoch_Xpositions]
         translated_Ypositions = [y - start_y + fixed_origin[1] for y in runtype_epoch_Ypositions]
-        
+
         for i in range(numberofpositions - 1):
             ax.plot(translated_Xpositions[i:i+2], translated_Ypositions[i:i+2], 
                     color=colorgradientforthisrun[i], linewidth=line_width)
-        
+
         ax.plot(translated_Xpositions[0], translated_Ypositions[0], 'go', markersize=3)
-        
+
         if len(translated_Xpositions) >= q:
             dx = translated_Xpositions[-1] - translated_Xpositions[-q]
             dy = translated_Ypositions[-1] - translated_Ypositions[-q]
-            
+
             norm_speed = np.hypot(dx, dy)
             if norm_speed != 0:
                 dx /= norm_speed
                 dy /= norm_speed
-            
+
             ax.arrow(translated_Xpositions[-1], translated_Ypositions[-1], dx, dy,
                      head_width=1, head_length=1, width=arrow_width, fc='red', ec='red')
 
     # Supprime tous les axes et cadres
-    ax.set_xlim(-ylim, ylim)
-    ax.set_ylim(-xlim, xlim)
+    ax.set_ylim(-ylim, ylim)
+    ax.set_xlim(-xlim, xlim)
     ax.axis('off')
 
 def plot_maze_towers_with_results(vertices, towers_coordinates, results):
@@ -292,7 +356,7 @@ def plot_maze_towers_with_results(vertices, towers_coordinates, results):
         # Fermer le polygone en ajoutant le premier sommet à la fin
         closed_vertices = vertices + [vertices[0]]
         closed_vertices = list(zip(*closed_vertices))  # Transpose vertices for plotting (x, y)
-        
+
         # Calculer le centre du polygone pour afficher le texte au centre
         center_x = sum(v[0] for v in vertices) / len(vertices)
         center_y = sum(v[1] for v in vertices) / len(vertices)
@@ -300,20 +364,32 @@ def plot_maze_towers_with_results(vertices, towers_coordinates, results):
         # Extraire les résultats pour le tour spécifié
         if tower_name in results:
             tower_results = results[tower_name]
-            # total_rewards[tower_name] = tower_results['rewarded_CCW'] + tower_results['rewarded_CW']
-            # total_turns[tower_name] = tower_results['total_CCW'] + tower_results['total_CW']
+
             # Texte avec les données comportementales pour le tour
             behavior_text = (f"{tower_name}\n"
                                 f"Rewarded/Tot\n"
                                 f"CW: {tower_results['rewarded_CW']}/{tower_results['total_CW']}\n"
                                 f"CCW: {tower_results['rewarded_CCW']}/{tower_results['total_CCW']}")
-            
+
             # Ajouter le texte au centre du polygone
-            plt.text(center_x, center_y, behavior_text, fontsize=8, ha='center', va='center', color='black')
+            plt.text(center_x, center_y, behavior_text, fontsize=8, 
+                     ha='center', va='center', color='black')
         else:
             print(f"Warning: Tower name '{tower_name}' not found in results.")
 
-def plot_run_trajectories(ax, trapezes_coordinates, run_type, traject_time, distances, X_positions_cm, Y_positions_cm, speeds, towers_coordinates, run_label='Undefined run label', q=4):
+def plot_run_trajectories(
+        ax: any,
+        trapezes_coordinates: dict,
+        run_type: any,
+        timeofframes: any,
+        run_around_tower_results: any,
+        distances: any,
+        X_positions_cm: list,
+        Y_positions_cm: list, 
+        speeds: any,
+        towers_coordinates: any,
+        run_label: str = 'Undefined run label',
+        q: int = 4):
     """
     Plots run trajectories around towers, including towers and behavioral data.
 
@@ -323,7 +399,7 @@ def plot_run_trajectories(ax, trapezes_coordinates, run_type, traject_time, dist
         q (int): Minimum number of points to compute and display direction arrows.
         trapezes_coordinates (dict): Coordinates of trapezoidal regions for each tower.
         run_type (list of tuples): List of runs, where each run is represented as [(start, end), ...].
-        traject_time (list): Time values corresponding to the trajectory points.
+        timeofframes (list): Time values corresponding to the trajectory points.
         distances (list): Distance values for each point in the trajectory.
         X_positions_cm (list): X-coordinates of positions in the trajectory.
         Y_positions_cm (list): Y-coordinates of positions in the trajectory.
@@ -357,7 +433,7 @@ def plot_run_trajectories(ax, trapezes_coordinates, run_type, traject_time, dist
         start_index, end_index = run[0][0], run[0][1]
         run_X_position = X_positions_cm[start_index:end_index + 1]
         run_Y_position = Y_positions_cm[start_index:end_index + 1]
-        run_duration = traject_time[end_index] - traject_time[start_index]
+        run_duration = timeofframes[end_index] - timeofframes[start_index]
         distance_ran = np.sum(distances[start_index:end_index])
 
         # Accumulate metrics
@@ -370,7 +446,7 @@ def plot_run_trajectories(ax, trapezes_coordinates, run_type, traject_time, dist
         numberofpositions = len(run_X_position)
         colorgradientforthisrun = custom_cmap(numberofpositions)
         for k in range(numberofpositions - 1):
-            ax.plot(run_X_position[k:k+2], run_Y_position[k:k+2], linestyle='-', 
+            ax.plot(run_X_position[k:k+2], run_Y_position[k:k+2], linestyle='-',
                     color=colorgradientforthisrun[k], linewidth=0.5)
 
         # Plot start point of the run
@@ -384,7 +460,7 @@ def plot_run_trajectories(ax, trapezes_coordinates, run_type, traject_time, dist
             if norm != 0:
                 dx /= norm
                 dy /= norm
-            ax.arrow(run_X_position[-1], run_Y_position[-1], dx, dy, 
+            ax.arrow(run_X_position[-1], run_Y_position[-1], dx, dy,
                      head_width=0.8, head_length=1, fc='red', ec='red')
 
     # Plot towers with results if specified
@@ -398,7 +474,7 @@ def plot_run_trajectories(ax, trapezes_coordinates, run_type, traject_time, dist
     ax.set_xlabel(text, fontsize=17, labelpad=-10)
 
 
-def custom_cmap(num_points):
+def custom_cmap(num_points: any):
     colors = [(0, 1, 0), (1, 0.5, 0), (1, 0, 0)] # Green to orange to red
     cmap = LinearSegmentedColormap.from_list('custom_cmap', colors)
     return [cmap(i / (num_points - 1)) for i in range(num_points)]
@@ -412,9 +488,6 @@ def extract_pickle_data(folder_path_mouse_to_process, session_to_process):
     with open(output_pickle_filepath, 'rb') as f:
         data = pickle.load(f)
 
-    for key, value in data.items():
-        print(key)
-    
     X_positions_cm = data['positions'][0]
     Y_positions_cm = data['positions'][1]
     average_speed = data['average_speed']
@@ -422,23 +495,68 @@ def extract_pickle_data(folder_path_mouse_to_process, session_to_process):
     speeds = data['speeds']
     angular_speeds = data['angular_speeds']
     all_epochs = data['all_epochs']
-    traject_time = data['timeofframes']
-    run_around_tower_results = data['run_around_tower_sessionresult']
     timeofframes = data['timeofframes']
-    
+    run_around_tower_results = data['run_around_tower_sessionresult']
     trapezes_coordinates = data['all_trapezes_coordinates_cm']
     towers_coordinates = data['towers_coordinates_cm']
     time_in_zones = data['time_in_zones']
     distance_in_zones = data['distance_in_zones']
 
-    return X_positions_cm, Y_positions_cm, average_speed, distances, speeds, angular_speeds, all_epochs, traject_time, run_around_tower_results, timeofframes, trapezes_coordinates, towers_coordinates, time_in_zones, distance_in_zones
+    return X_positions_cm, Y_positions_cm, average_speed, distances, speeds, angular_speeds, all_epochs, timeofframes, run_around_tower_results, trapezes_coordinates, towers_coordinates, time_in_zones, distance_in_zones
+
+def get_zones_data(time_in_zones, distance_in_zones):
+
+    time_in_border = time_in_zones['border']
+    time_in_trapeze = time_in_zones['trapeze']
+    time_in_interior = time_in_zones['interior']
+    distance_in_border = distance_in_zones['border']
+    distance_in_trapeze = distance_in_zones['trapeze']
+    distance_in_interior = distance_in_zones['interior']
+
+    # Calculate the time and distance ratios between trapeze and border
+    ratio_time_trapeze_border = time_in_trapeze / time_in_border
+    ratio_distance_trapeze_border = distance_in_trapeze / distance_in_border
+
+    # Calculate speed for each zone
+    speed_border = distance_in_border / time_in_border
+    speed_trapezes = distance_in_trapeze / time_in_trapeze
+    speed_interior = distance_in_interior / time_in_interior
+
+    time_zones_data = [time_in_border, time_in_trapeze, time_in_interior]
+    distance_zones_data = [distance_in_border, distance_in_trapeze, distance_in_interior]
+    speed_zones_data = [speed_border, speed_trapezes, speed_interior]
+    ratios_trapeze_over_border = [round(ratio_time_trapeze_border, 2), round(ratio_distance_trapeze_border, 2)]
+
+    return time_zones_data, distance_zones_data, speed_zones_data, ratios_trapeze_over_border
+
+def get_runs_data(all_epochs):
+
+    runs_around_tower = all_epochs['run_around_tower']
+    runs_between_towers = all_epochs['run_between_towers']
+    exploratory_runs = all_epochs['exploratory_run']
+
+    runs_around_tower_CW = []
+    runs_around_tower_CCW = []
+
+    for run in runs_around_tower:
+        if run[3]['direction'] == 'CW':
+            runs_around_tower_CW.append(run)
+        else:
+            runs_around_tower_CCW.append(run)
+
+    return runs_around_tower, runs_around_tower_CW, runs_around_tower_CCW, runs_between_towers, exploratory_runs
 
 
+def generate_session_figure(folder_path_mouse_to_process, session_to_process, fig, n_rows, n_cols):
 
-def generate_session_figure(fig, n_rows, n_cols):
-    
     # Utilisation de GridSpec pour une grille flexible
     gs = GridSpec(n_rows, n_cols, figure=fig, wspace=0.2, hspace=0.2)
+
+    # Extract datas from pickle to plot them
+    X_positions_cm, Y_positions_cm, average_speed, distances, speeds, angular_speeds, all_epochs, timeofframes, run_around_tower_results, trapezes_coordinates, towers_coordinates, time_in_zones, distance_in_zones = extract_pickle_data(folder_path_mouse_to_process, session_to_process)
+    total_distance = np.sum(distances)/100
+    time_zones_data, distance_zones_data, speed_zones_data, ratios_trapeze_over_border = get_zones_data(time_in_zones, distance_in_zones)
+    runs_around_tower, runs_around_tower_CW, runs_around_tower_CCW, runs_between_towers, exploratory_runs = get_runs_data(all_epochs)
 
     # Line 1: full session analysis
 
@@ -456,99 +574,119 @@ def generate_session_figure(fig, n_rows, n_cols):
 
     # Time spent in zones(column 4)
     ax_time = fig.add_subplot(gs[0, 3])
-    plot_metrics_in_zones(ax_time, time_zones_data, metric_title='Time spent in zones', ylabel='Time (s)', ymax=800)
+    plot_metrics_in_zones(ax_time, time_zones_data, metric_title='Time spent in zones',
+                          ylabel='Time (s)', ymax=800)
 
     # Distance in zones (column 5)
     ax_distance = fig.add_subplot(gs[0, 4])
-    plot_metrics_in_zones(ax_distance, distance_zones_data, metric_title='Distance covered in zones', ylabel='Distance (cm)', ymax=10500)
+    plot_metrics_in_zones(ax_distance, distance_zones_data, metric_title='Distance covered in zones',
+                          ylabel='Distance (cm)', ymax=10500)
 
     # Speed in zones (column 6)
     ax_speed = fig.add_subplot(gs[0, 5])
-    plot_metrics_in_zones(ax_speed, speed_zones_data, metric_title='Global speed in zones', ylabel='Speed (cm/s)', ymax=None)
+    plot_metrics_in_zones(ax_speed, speed_zones_data, metric_title='Global speed in zones',
+                          ylabel='Speed (cm/s)', ymax=None)
 
     # Ratios of time and distance in trapeze vs border (column 7)
     ax_ratios = fig.add_subplot(gs[0, 6])
-    plot_ratios_in_zones(ax_ratios, ratios_trapeze_over_border, title_ratio='Ratios trapeze over border', xlabel='Trapeze/Border', ymax=None)
+    plot_ratios_in_zones(ax_ratios, ratios_trapeze_over_border, title_ratio='Ratios trapeze over border',
+                         xlabel='Trapeze/Border', ymax=None)
 
 
     # Line 2 : runs around tower analysis
 
     # Trajectory of all runs around tower (column 1)
     ax_traj_QT = fig.add_subplot(gs[1,0])
-    plot_run_trajectories(ax_traj_QT, trapezes_coordinates, runs_around_tower, traject_time, distances, 
-                            X_positions_cm, Y_positions_cm, speeds, towers_coordinates, run_label='runs around towers', q=4)
+    plot_run_trajectories(ax_traj_QT, trapezes_coordinates, runs_around_tower,
+                          timeofframes, run_around_tower_results, distances,
+                          X_positions_cm, Y_positions_cm, speeds, towers_coordinates,
+                          run_label='runs around towers', q=4)
 
     # Trajectory and speeds of CW turns (columns 2 and 3)
     ax_CW_QT_trajectories = fig.add_subplot(gs[1,1])
-    plot_trajectory_type_centered(ax_CW_QT_trajectories, X_positions_cm, Y_positions_cm, runs_around_tower_CW, xlim=30, ylim=30)
+    plot_trajectory_type_centered(ax_CW_QT_trajectories, X_positions_cm, Y_positions_cm,
+                                  runs_around_tower_CW, xlim=30, ylim=30)
 
     ax_CW_QT_speeds = fig.add_subplot(gs[1,2])
-    plot_speed_over_time(ax_CW_QT_speeds, traject_time, speeds, runs_around_tower_CW, xlim=2.1, set_title=False, title_type = 'CW runs around tower')
+    plot_speed_over_time(ax_CW_QT_speeds, timeofframes, speeds, runs_around_tower_CW,
+                         xlim=2.1, set_title=False, title_type = 'CW runs around tower')
 
     # Trajectory and speeds of CCW turns (columns 4 and 5)
     ax_CCW_QT_trajectories = fig.add_subplot(gs[1,3])
-    plot_trajectory_type_centered(ax_CCW_QT_trajectories, X_positions_cm, Y_positions_cm, runs_around_tower_CCW, xlim=30, ylim=30)
+    plot_trajectory_type_centered(ax_CCW_QT_trajectories, X_positions_cm, Y_positions_cm,
+                                  runs_around_tower_CCW, xlim=30, ylim=30)
 
     ax_CCW_QT_speeds = fig.add_subplot(gs[1,4])
-    plot_speed_over_time(ax_CCW_QT_speeds, traject_time, speeds, runs_around_tower_CCW, xlim=2.1, set_title=False, title_type = 'CCW runs around tower')
+    plot_speed_over_time(ax_CCW_QT_speeds, timeofframes, speeds, runs_around_tower_CCW,
+                         xlim=2.1, set_title=False, title_type = 'CCW runs around tower')
 
     # Cumulative number of CCW/CW (column 6)
-    ax_cumul_CW_CCW = fig.add_subplot(gs[1,5])
-    plot_cumulative_rewarded_unrewarded(ax_cumul_CW_CCW, runs_around_tower)
+    ax_cumul_rewarded_unrewarded = fig.add_subplot(gs[1,5])
+    plot_cumulative_rewarded_unrewarded(ax_cumul_rewarded_unrewarded, runs_around_tower)
 
     # Cumulative number of rewarded/unrewarded (column 7)
-    ax_cumul_rewarded_unrewarded = fig.add_subplot(gs[1,6])
-    plot_cumulative_CW_CCW(ax_cumul_rewarded_unrewarded, runs_around_tower)
+    ax_cumul_CW_CCW = fig.add_subplot(gs[1,6])
+    plot_cumulative_CW_CCW(ax_cumul_CW_CCW, runs_around_tower)
 
 
     # Line 3 : runs between towers analysis
 
     # Trajectory of all runs between towers (column 1)
     ax_traj_BT = fig.add_subplot(gs[2,0])
-    plot_run_trajectories(ax_traj_BT, trapezes_coordinates, runs_between_towers, traject_time, distances, 
-                            X_positions_cm, Y_positions_cm, speeds, towers_coordinates, run_label='runs between towers', q=4)
+    plot_run_trajectories(ax_traj_BT, trapezes_coordinates, runs_between_towers,
+                          timeofframes, run_around_tower_results, distances,
+                          X_positions_cm, Y_positions_cm, speeds, towers_coordinates,
+                          run_label='runs between towers', q=4)
 
     # Centered trajectory (column 2)
     ax_trajectory = fig.add_subplot(gs[2, 1])
-    plot_trajectory_type_centered(ax_trajectory, X_positions_cm, Y_positions_cm, runs_between_towers, xlim=90, ylim=90)
+    plot_trajectory_type_centered(ax_trajectory, X_positions_cm, Y_positions_cm,
+                                  runs_between_towers, xlim=90, ylim=90)
 
     # Speed profiles (columns 3 and 4)
     ax_speed = fig.add_subplot(gs[2, 2:4])
-    plot_speed_over_time(ax_speed, traject_time, speeds, runs_between_towers, title_type='runs between towers', xlim=4.1)
+    plot_speed_over_time(ax_speed, timeofframes, speeds, runs_between_towers,
+                         title_type='runs between towers', xlim=4.1)
 
     # Cumulative number of runs between towers (column 5)
     ax_cumul_nb_of_BT = fig.add_subplot(gs[2,4])
-    plot_cumulative_runs(ax_cumul_nb_of_BT, runs_between_towers, legend_label='Runs between towers', color='orange', ymax=None)
+    plot_cumulative_runs(ax_cumul_nb_of_BT, runs_between_towers, legend_label='Runs between towers',
+                         color='orange', ymax=None)
 
 
     # Line 4 : exploratory runs analysis
 
     # Trajectory of all exploratory runs (column 1)
     ax_traj_ER = fig.add_subplot(gs[3,0])
-    plot_run_trajectories(ax_traj_ER, trapezes_coordinates, exploratory_runs, traject_time, distances, 
-                            X_positions_cm, Y_positions_cm, speeds, towers_coordinates, run_label='exploratory runs', q=4)
+    plot_run_trajectories(ax_traj_ER, trapezes_coordinates, exploratory_runs,
+                          timeofframes, run_around_tower_results, distances,
+                          X_positions_cm, Y_positions_cm, speeds, towers_coordinates,
+                          run_label='exploratory runs', q=4)
 
     # Centered trajectory (column 2)
     ax_trajectory = fig.add_subplot(gs[3, 1])
-    plot_trajectory_type_centered(ax_trajectory, X_positions_cm, Y_positions_cm, exploratory_runs, xlim=90, ylim=90)
+    plot_trajectory_type_centered(ax_trajectory, X_positions_cm, Y_positions_cm,
+                                  exploratory_runs, xlim=90, ylim=90)
 
     # Speed profiles (columns 3 and 4)
     ax_speed = fig.add_subplot(gs[3, 2:4])
-    plot_speed_over_time(ax_speed, traject_time, speeds, exploratory_runs, title_type='exploratory runs')
+    plot_speed_over_time(ax_speed, timeofframes, speeds, exploratory_runs,
+                         title_type='exploratory runs')
 
     # Cumulative number of exploratory runs (column 5)
     ax_cumul_nb_of_ER = fig.add_subplot(gs[3,4])
-    plot_cumulative_runs(ax_cumul_nb_of_ER, exploratory_runs, legend_label='Exploratory runs', color='purple', ymax=None)
+    plot_cumulative_runs(ax_cumul_nb_of_ER, exploratory_runs, legend_label='Exploratory runs',
+                         color='purple', ymax=None)
 
 
     # Handle texts and fig params
 
-    fig.suptitle(f"Session {session_to_process} Analysis Overview", 
-                 fontsize=40, 
+    fig.suptitle(f"Session {session_to_process} Analysis Overview",
+                 fontsize=40,
                  fontweight='bold',
-                 fontname='Nimbus Sans Narrow', 
+                 fontname='Nimbus Sans Narrow',
                  y=0.96)
-    fig.text(0.5, 0.92, f'Rewarding direction: ', ha='center', va='center', fontsize=30, fontstyle='italic', fontname='Ubuntu')
+    fig.text(0.5, 0.92, 'Rewarding direction: ', ha='center', va='center', fontsize=30, fontstyle='italic', fontname='Ubuntu')
     fig.text(0.11, 0.8, 'Session metrics', ha='center', va='center', rotation=90, fontsize=20, fontweight='bold', fontname='Ubuntu')
     fig.text(0.11, 0.6, 'Runs around towers', ha='center', va='center', rotation=90, fontsize=20, fontweight='bold', fontname='Ubuntu')
     fig.text(0.11, 0.40, 'Runs between towers', ha='center', va='center', rotation=90, fontsize=20, fontweight='bold', fontname='Ubuntu')
@@ -556,3 +694,34 @@ def generate_session_figure(fig, n_rows, n_cols):
 
     # plt.subplots_adjust(hspace=5)
 
+output_path = f"/home/david/Pictures/PDF_figure/{mice_list[0]}_figure.pdf"
+
+# Size of the figure
+square_size = 6
+n_cols = 7
+n_rows = 4
+figsize = (n_cols * square_size, n_rows * square_size)
+
+# Initialisation de tqdm pour la barre de progression
+num_sessions = len(session_list[mice_list[0]])
+progress_bar = tqdm(session_list[mice_list[0]], desc="Processing sessions", bar_format="{l_bar}~~(__^·>{bar}| {n_fmt}/{total_fmt}")
+
+# Création du PDF multi-pages
+with PdfPages(output_path) as pdf:
+    # Boucle sur toutes les sessions
+    for session in progress_bar:
+
+        # Mise à jour du message de progression
+        progress_bar.set_description(f"Processing session {session}")
+
+        # Création d'une figure pour chaque session
+        fig = plt.figure(figsize=figsize)
+        generate_session_figure(folder_path_mouse_to_process, session, fig, n_rows, n_cols)
+
+        # Ajout de la figure actuelle au PDF
+        pdf.savefig(fig, bbox_inches="tight")
+
+        # Fermeture de la figure pour libérer la mémoire
+        plt.close(fig)
+
+    print(f"PDF de {mice_list[0]} généré avec succès !")
