@@ -3,7 +3,9 @@
 # Import libraries
 
 import os
+import gc
 import pickle
+import time
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -19,25 +21,23 @@ from processing_TowerCoordinates import *
 
 # Temporary: access to all sessions of one animal to test the code
 
-path_to_data_folder = '/home/david/MyLocalData/Maud/' # Maud work computer
-# path_to_data_folder = 'C:/Users/mauds/Documents' # Maud personal computer
+path_to_data_folder = '/home/david/MyLocalData/Maud/For_analysis' # Path where you find your datas
+
 pattern_of_MOU_Folders = os.path.join(path_to_data_folder, "MOU*")
 
-mice_list: list[str] = ["MOU4551"]
+mouse = "MOU4507"
 
 session_list = {}
-for mouse in mice_list:
-    mouse_folder = os.path.join(path_to_data_folder,mouse)
-    session_list[mouse] = sorted([name for name in os.listdir(mouse_folder)
-                           if os.path.isdir(os.path.join(mouse_folder, name))
-                           and name.startswith('MOU')])
-    nb_sessions = len(session_list[mouse])
+mouse_folder = os.path.join(path_to_data_folder, mouse)
+session_list[mouse] = sorted([name for name in os.listdir(mouse_folder)
+                        if os.path.isdir(os.path.join(mouse_folder, name))
+                        and name.startswith('MOU')])
+nb_sessions = len(session_list[mouse])
 
-folder_path_mouse_to_process=os.path.join(path_to_data_folder,mice_list[0])
-# print(folder_path_mouse_to_process)
+folder_path_mouse_to_process=os.path.join(path_to_data_folder,mouse)
 
-session_to_process=session_list[mice_list[0]][42]
-# print(session_to_process)
+output_path = f"{folder_path_mouse_to_process}/{mouse}_figure.pdf" # Path where you will register the PDF
+# print(f"output path = {output_path}") # ADD TO TEST
 
 # Functions to plot
 
@@ -93,7 +93,7 @@ def plot_angular_speed_distribution(ax, angular_speeds):
     ax.tick_params(axis='y', labelsize=13)
     ax.tick_params(axis='x', labelsize=13)
 
-def plot_metrics_in_zones(ax, metrics_data, metric_title='Undefined metric', 
+def plot_metrics_in_zones(ax, metrics_data, metric_title='Undefined metric',
                           ylabel = 'Undefined y label', ymax=None):
     """
     Parameters:
@@ -694,7 +694,6 @@ def generate_session_figure(folder_path_mouse_to_process, session_to_process, fi
 
     # plt.subplots_adjust(hspace=5)
 
-output_path = f"/home/david/Pictures/PDF_figure/{mice_list[0]}_figure.pdf"
 
 # Size of the figure
 square_size = 6
@@ -702,17 +701,13 @@ n_cols = 7
 n_rows = 4
 figsize = (n_cols * square_size, n_rows * square_size)
 
-# Initialisation de tqdm pour la barre de progression
-num_sessions = len(session_list[mice_list[0]])
-progress_bar = tqdm(session_list[mice_list[0]], desc="Processing sessions", bar_format="{l_bar}~~(__^·>{bar}| {n_fmt}/{total_fmt}")
-
 # Création du PDF multi-pages
 with PdfPages(output_path) as pdf:
     # Boucle sur toutes les sessions
-    for session in progress_bar:
+    for session in session_list[mouse]:
 
-        # Mise à jour du message de progression
-        progress_bar.set_description(f"Processing session {session}")
+        start_time = time.time()
+        print(f"Processing session {session}...")
 
         # Création d'une figure pour chaque session
         fig = plt.figure(figsize=figsize)
@@ -723,5 +718,8 @@ with PdfPages(output_path) as pdf:
 
         # Fermeture de la figure pour libérer la mémoire
         plt.close(fig)
+        gc.collect()
+        elapsed_time = time.time() - start_time
+        print(f"Session processed in {elapsed_time:.2f} seconds")
 
-    print(f"PDF de {mice_list[0]} généré avec succès !")
+    print(f"PDF de {mouse} généré avec succès !")
