@@ -360,7 +360,18 @@ def process_run_around_tower_epochs(all_epochs, time_video_frames, turns_df, dis
         num_trapezeswitch = switch_in_turns_df.shape[0]
         
         # Initialize the type_of_turn dictionary
-        type_of_turn = {'Rewarded': '', 'direction': '', 'num_trapezeswitch': num_trapezeswitch, 'max_rewards': switch_in_turns_df.iloc[0]['maxNberOfConsecRewards']}
+
+        is_maxNberOfConsecRewards = 'maxNberOfConsecRewards' in switch_in_turns_df.keys()
+
+        if is_maxNberOfConsecRewards:
+            
+            maxNberOfConsecRewards = switch_in_turns_df.iloc[0]['maxNberOfConsecRewards']
+            
+        else:
+
+            maxNberOfConsecRewards = None
+
+        type_of_turn = {'Rewarded': '', 'direction': '', 'num_trapezeswitch': num_trapezeswitch, 'max_rewards': maxNberOfConsecRewards}
         
         # Normalize 'Rewarded' to boolean
         rewarded_value = switch_in_turns_df.iloc[0]['Rewarded']
