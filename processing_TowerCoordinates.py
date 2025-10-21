@@ -89,7 +89,7 @@ def get_trapeze_and_tower_data(folder_path_mouse_to_process, session_to_process)
         trapeze_width = param_df["TrapezeSize"].values[0]
         #print('Trapeze width from parameter file:')
     else:
-        trapeze_width = 50  # Default trapeze width
+        trapeze_width = 30  # Default trapeze width
         #print('Default trapeze width')
     #print(trapeze_width)
 
